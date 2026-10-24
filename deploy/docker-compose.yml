@@ -1,0 +1,97 @@
+# MineAdmin 学习环境（服务器端）
+#
+# 目录结构（服务器 /opt/hyperfstu）：
+#   MineAdmin/        Hyperf 后端
+#   MineAdmin-Vue/    前端源码（dist 由部署脚本构建）
+#   deploy/           compose + nginx
+#
+# 用法：
+#   docker compose -f deploy/docker-compose.yml up -d
+#
+# 说明：
+#   - app 容器以 `server:watch` 启动，文件变化后 2 秒内自动重启 Swoole，实现热更新
+#   - nginx 托管 MineAdmin-Vue/dist，并把 /prod/ 反代到 app:9501
+#   - mysql / redis 只绑定 127.0.0.1，公网无法直连（需要连库请用 SSH 隧道）
+name: mineadmin
+
+volumes:
+  mine_mysql_data:
+  mine_redis_data:
+
+services:
+  app:
+    image: hyperf/hyperf:8.3-alpine-v3.24-swoole
+    container_name: mineadmin-app
+    working_dir: /opt/www
+    # 学习/开发模式：热更新（config/autoload/watcher.php 中 ScanFileDriver 每 2 秒扫描一次）
+    # 生产环境请改成: ["php", "bin/hyperf.php", "start"]
+    command: ["php", "bin/hyperf.php", "server:watch"]
+    restart: unless-stopped
+    volumes:
+      - ../MineAdmin:/opt/www
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      # 只给服务器本机调试用，公网统一走 nginx
+      - "127.0.0.1:${APP_PORT:-9501}:9501"
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: mineadmin-nginx
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # 构建脚本会把 MineAdmin-Vue/dist 同步到 MineAdmin/web
+      - ../MineAdmin/web:/usr/share/nginx/html:ro
+      - ../MineAdmin/storage/uploads:/srv/uploads:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.0
+    container_name: mineadmin-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_DATABASE:-mineadmin}
+      TZ: Asia/Shanghai
+    volumes:
+      - mine_mysql_data:/var/lib/mysql
+    ports:
+      # 只允许服务器本机访问，避免数据库裸奔在公网
+      - "127.0.0.1:${DB_EXPOSE_PORT:-13306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: mineadmin-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - mine_redis_data:/data
+    ports:
+      - "127.0.0.1:${REDIS_EXPOSE_PORT:-16379}:6379"
+    environment:
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30

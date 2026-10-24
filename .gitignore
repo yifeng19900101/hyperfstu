@@ -1,0 +1,28 @@
+# ===== 密钥 / 本地配置（绝对不要提交）=====
+MineAdmin/.env
+MineAdmin/.env.local
+deploy/.env
+scripts/deploy.config.ps1
+
+# ===== PHP =====
+MineAdmin/vendor/
+MineAdmin/runtime/
+MineAdmin/storage/uploads/
+MineAdmin/web/
+MineAdmin/.phpunit.result.cache
+MineAdmin/.php-cs-fixer.cache
+
+# ===== 前端 =====
+MineAdmin-Vue/node_modules/
+MineAdmin-Vue/dist/
+MineAdmin-Vue/.eslintcache
+MineAdmin-Vue/test-results/
+MineAdmin-Vue/playwright-report/
+
+# ===== 部署状态 =====
+.deploy/
+
+# ===== 系统 / 编辑器 =====
+.DS_Store
+Thumbs.db
+.idea/
