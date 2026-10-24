@@ -7,7 +7,7 @@
 ```powershell
 # 1. 在 GitHub 创建空仓库 hyperfstu，然后绑定远程并首次推送
 cd D:\code\hyperfstu
-git remote add origin https://github.com/你的用户名/hyperfstu.git
+git remote add origin https://github.com/yifeng19900101/hyperfstu.git
 git push -u origin main
 
 # 2. 配置服务器（GitHub 地址、SSH、项目目录）
