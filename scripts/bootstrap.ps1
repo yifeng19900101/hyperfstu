@@ -235,6 +235,7 @@ else {
     Write-Host ''
     Write-Host "  配好后的访问地址 : http://<你的域名>/"
     Write-Host "  后端直连（调试） : http://127.0.0.1:$appPort （只能在服务器上访问）"
+    Write-Host "  绑了域名后记得改 : MineAdmin/.env 的 APP_URL=http://你的域名"
     Write-Host '  完整步骤文档     : docs/10-宝塔面板部署.md'
 }
 Write-Host "  默认账号 : admin / 123456"
