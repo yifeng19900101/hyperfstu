@@ -9,7 +9,8 @@ ROOT="$(cd "$NATIVE_DIR/../.." && pwd)"
 APP_DIR="$ROOT/MineAdmin"
 FRONT_DIR="$ROOT/MineAdmin-Vue"
 STATE_DIR="$ROOT/.deploy"
-WEB_DIR="$APP_DIR/web"
+# 站点根目录：就是前端的 dist，域名直接指向它
+WEB_DIR="$FRONT_DIR/dist"
 PID_FILE="$APP_DIR/runtime/hyperf.pid"
 
 PHP_BIN="${PHP_BIN:-}"
@@ -173,36 +174,50 @@ frontend_changed() {
 
 build_frontend() {
     local force="${1:-0}"
+    local mode="${FRONTEND_MODE:-}"
+    if [ -z "$mode" ] && [ -f "$ROOT/deploy/.env" ]; then
+        mode="$(grep -E '^FRONTEND_MODE=' "$ROOT/deploy/.env" | head -n1 | cut -d= -f2 || true)"
+    fi
+    mode="${mode:-repo}"
+
+    if [ "$mode" = "repo" ]; then
+        # dist 在仓库里，git pull 已经更新过。这里绝不能构建：
+        # 生成的新文件会让工作区变脏，下次 git pull --ff-only 直接失败。
+        if [ -f "$WEB_DIR/index.html" ]; then
+            echo "前端产物来自仓库（FRONTEND_MODE=repo），跳过构建"
+            return 0
+        fi
+        die "FRONTEND_MODE=repo 但 $WEB_DIR/index.html 不存在。
+      在本地 MineAdmin-Vue 里 pnpm build 后提交 dist，
+      或把 deploy/.env 改成 FRONTEND_MODE=build 让服务器构建。"
+    fi
+
     if [ "$force" != "1" ] && ! frontend_changed; then
         echo "前端产物是最新的，跳过构建"
         return 0
     fi
     if ! setup_node; then
         warn "服务器上没有 node / pnpm，跳过前端构建。
-可以在宝塔「Node.js 版本管理器」里装 Node 22，或在本地 pnpm build 后把 dist 上传到 MineAdmin/web。"
+可以在宝塔「Node.js 版本管理器」里装 Node 22，或在本地 pnpm build 后提交 dist（FRONTEND_MODE=repo）。"
         return 1
     fi
     log "构建前端（node $(node -v)，pnpm $(pnpm -v)）"
     ( cd "$FRONT_DIR" && pnpm install --frozen-lockfile && pnpm build )
-    [ -f "$FRONT_DIR/dist/index.html" ] || die "前端构建完成但 dist/index.html 不存在"
-
-    log "同步前端到 MineAdmin/web"
-    mkdir -p "$WEB_DIR"
-    rm -rf "$WEB_DIR"
-    mkdir -p "$WEB_DIR"
-    cp -a "$FRONT_DIR/dist/." "$WEB_DIR/"
+    [ -f "$WEB_DIR/index.html" ] || die "前端构建完成但 dist/index.html 不存在"
+    echo "构建完成：$WEB_DIR"
 }
 
 # ---------------------------------------------------------------- 权限
 fix_permissions() {
-    mkdir -p "$APP_DIR/runtime" "$APP_DIR/storage/uploads" "$WEB_DIR"
+    mkdir -p "$APP_DIR/runtime" "$APP_DIR/storage/uploads"
     if id www >/dev/null 2>&1; then
-        chown -R www:www "$APP_DIR/runtime" "$APP_DIR/storage" "$WEB_DIR" 2>/dev/null || true
+        chown -R www:www "$APP_DIR/runtime" "$APP_DIR/storage" 2>/dev/null || true
     fi
-    chmod -R u+rwX "$APP_DIR/runtime" "$APP_DIR/storage" "$WEB_DIR" 2>/dev/null || true
-    # 面板 nginx 以 www 运行，需要能读静态文件和附件
-    chmod o+x "$ROOT" "$APP_DIR" 2>/dev/null || true
-    chmod -R o+rX "$WEB_DIR" "$APP_DIR/storage/uploads" 2>/dev/null || true
+    chmod -R u+rwX "$APP_DIR/runtime" "$APP_DIR/storage" 2>/dev/null || true
+    # 面板 nginx 以 www 运行，需要能读静态文件（dist）和附件
+    chmod o+x "$ROOT" "$APP_DIR" "$FRONT_DIR" 2>/dev/null || true
+    [ -d "$WEB_DIR" ] && chmod -R o+rX "$WEB_DIR" 2>/dev/null || true
+    chmod -R o+rX "$APP_DIR/storage/uploads" 2>/dev/null || true
 }
 
 # ---------------------------------------------------------------- 进程

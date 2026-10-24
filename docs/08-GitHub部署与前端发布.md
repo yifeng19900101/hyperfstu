@@ -24,8 +24,7 @@ hyperfstu/
 │  └─ vendor/            # 服务器 composer，不进 Git
 ├─ MineAdmin-Vue/        # Vue3 前端源码
 │  ├─ src/ ...
-│  └─ dist/              # 服务器构建缓存，不进 Git
-│  # MineAdmin/web/      # 构建产物同步到这里，Nginx 实际托管，不进 Git
+│  └─ dist/              # 构建产物，提交进 Git；域名直接指向这里（见 docs/12）
 ├─ deploy/
 │  ├─ docker-compose.yml # app + nginx + mysql + redis
 │  ├─ nginx/default.conf # 静态站 + /prod 反代
@@ -40,7 +39,7 @@ hyperfstu/
 ```
 浏览器 :80
    │
-   ├─ /            → nginx → /usr/share/nginx/html（服务器上的 MineAdmin/web）
+   ├─ /            → nginx → /usr/share/nginx/html（服务器上的 MineAdmin-Vue/dist）
    ├─ /static/*    → nginx 直接返回，30 天缓存
    ├─ /uploads/*   → nginx 直接读 MineAdmin/storage/uploads
    └─ /prod/admin/* → 去掉 /prod → app:9501（Swoole server:watch）
@@ -169,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
 3. 生成并上传 `deploy/.env`（随机数据库密码、`WEB_PORT=80`）
 4. 生成并上传 `MineAdmin/.env`（`SWAGGER_ENABLED=true`、随机 JWT、`APP_URL=http://服务器IP`）
 5. 启动 MySQL / Redis，`composer install`，`mine:install`（migrate + seed）
-6. 用 Node 容器 `pnpm install --frozen-lockfile && pnpm build`，产物在 `MineAdmin-Vue/dist`，再同步到 `MineAdmin/web`
+6. 前端按 `FRONTEND_MODE` 处理：`repo` 直接用仓库里的 `MineAdmin-Vue/dist`（不再构建）；`build` 才在 Node 容器里 `pnpm build`
 7. 启动 app + nginx，做首页和登录接口健康检查
 
 完成后访问：
@@ -237,10 +236,10 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 update
 | 源码 | `MineAdmin-Vue/`（Vue 3.2.2，Vite 8，pnpm） |
 | 构建命令 | `pnpm install --frozen-lockfile && pnpm build` |
 | 构建产物 | `MineAdmin-Vue/dist/`（构建缓存） |
-| 对外目录 | `MineAdmin/web/`（`update.sh` 会把 `dist/` 同步到这里） |
+| 对外目录 | `MineAdmin-Vue/dist/`（`update.sh` 会把 `dist/` 同步到这里） |
 | 路由模式 | hash（`/#/login`），Nginx 仍保留 history fallback |
 | API 前缀 | `/prod`（`.env.production` 的 `VITE_OPEN_PROXY=true`） |
-| 静态托管 | nginx 容器挂载 `MineAdmin/web/` |
+| 静态托管 | nginx 容器挂载 `MineAdmin-Vue/dist/` |
 | 上传目录 | nginx 挂载 `MineAdmin/storage/uploads/` 到 `/srv/uploads/` |
 
 ### 只想手动重建前端
@@ -250,7 +249,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 update
 cd /opt/hyperfstu
 docker run --rm -v "$PWD/MineAdmin-Vue:/app" -w /app node:22-alpine \
   sh -c "corepack enable && pnpm install --frozen-lockfile && pnpm build"
-mkdir -p MineAdmin/web && cp -a MineAdmin-Vue/dist/. MineAdmin/web/
+mkdir -p MineAdmin-Vue/dist && cp -a MineAdmin-Vue/dist/. MineAdmin-Vue/dist/
 ```
 
 本地也可以构建（验证语法）：
@@ -349,17 +348,17 @@ cd /opt/hyperfstu && git checkout main && git pull --ff-only origin main
 `web/` 没生成，或 nginx 挂载路径不对：
 
 ```bash
-ls -la /opt/hyperfstu/MineAdmin/web/index.html
+ls -la /opt/hyperfstu/MineAdmin-Vue/dist/index.html
 ls -la /opt/hyperfstu/MineAdmin-Vue/dist/index.html
 cd /opt/hyperfstu && bash deploy/update.sh --skip-pull
 docker compose -f deploy/docker-compose.yml logs nginx
 ```
 
-如果 `MineAdmin/web` 是空的，但 `dist` 有内容：
+如果 `MineAdmin-Vue/dist` 是空的，但 `dist` 有内容：
 
 ```bash
 cd /opt/hyperfstu
-mkdir -p MineAdmin/web && cp -a MineAdmin-Vue/dist/. MineAdmin/web/
+mkdir -p MineAdmin-Vue/dist && cp -a MineAdmin-Vue/dist/. MineAdmin-Vue/dist/
 ```
 
 ### 7.4 登录接口 404
@@ -410,7 +409,7 @@ bash deploy/update.sh --skip-pull
 cd /opt/hyperfstu
 rm -rf MineAdmin-Vue/dist
 bash deploy/update.sh --skip-pull
-cp -a MineAdmin-Vue/dist/. MineAdmin/web/
+cp -a MineAdmin-Vue/dist/. MineAdmin-Vue/dist/
 ```
 
 浏览器强刷 `Ctrl+F5`。

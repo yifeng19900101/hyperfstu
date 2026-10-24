@@ -254,10 +254,10 @@ Write-Host '  默认账号 : admin / 123456'
 Write-Host ''
 Write-Host '  还差最后一步：在宝塔面板建站并反代' -ForegroundColor Cyan
 Write-Host '    1) 网站 → 添加站点 → PHP 版本选「纯静态」'
-Write-Host "    2) 网站目录改成：$RemotePath/MineAdmin/web"
+Write-Host "    2) 网站目录改成：$RemotePath/MineAdmin-Vue/dist"
 Write-Host '    3) 设置 → 配置文件，把 deploy/bt/nginx-site.conf 粘进 server { }'
-Write-Host "    4) chmod o+x $RemotePath $RemotePath/MineAdmin"
-Write-Host '    详见 docs/11-不用Docker启动.md'
+Write-Host "    4) chmod o+x $RemotePath $RemotePath/MineAdmin $RemotePath/MineAdmin-Vue"
+Write-Host "       chmod -R o+rX $RemotePath/MineAdmin-Vue/dist"
 Write-Host ''
 Write-Host '  看日志 : powershell -File scripts\remote.ps1 -Native logs'
 Write-Host '  重启   : powershell -File scripts\remote.ps1 -Native restart'

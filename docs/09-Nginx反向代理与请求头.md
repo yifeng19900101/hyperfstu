@@ -231,7 +231,7 @@ proxy_redirect off;             # 不改写后端返回的 Location
 
 | 路径 | 谁处理 | 缓存 |
 |---|---|---|
-| `/` | `MineAdmin/web` 里的文件，找不到就回 `index.html` | — |
+| `/` | `MineAdmin-Vue/dist` 里的文件，找不到就回 `index.html` | — |
 | `/static/*` | 构建产物（文件名带 hash） | 30 天 + immutable |
 | `/index.html` | 构建产物 | **不缓存**，否则发布后还加载旧 hash |
 | `/uploads/*` | `MineAdmin/storage/uploads` | 7 天 |
@@ -428,7 +428,7 @@ curl.exe -s -X POST "http://你的服务器IP/prod/admin/proxy/debug" \
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | 所有 `/prod/admin/*` 404 | `proxy_pass` 少写尾斜杠，后端收到带 `/prod` 的路径 | 改成 `proxy_pass http://app:9501/;` |
-| 静态资源 404，页面白屏 | `root` 指向错误 / `MineAdmin/web` 为空 | `ls MineAdmin/web/index.html`，重跑 `update.sh` |
+| 静态资源 404，页面白屏 | `root` 指向错误 / `MineAdmin-Vue/dist` 为空 | `ls MineAdmin-Vue/dist/index.html`，重跑 `update.sh` |
 | 登录日志 IP 全是 `172.x` | 没登记受信任代理 | 加 `TrustedProxyMiddleware`（见 5.4） |
 | 客户端能伪造 IP | 用了 `$http_x_forwarded_for` 透传 | 换成 `$proxy_add_x_forwarded_for` |
 | 发布后还加载旧 JS | `index.html` 被缓存 | 加 `location = /index.html { no-cache; }`，浏览器 `Ctrl+F5` |

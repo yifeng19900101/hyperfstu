@@ -236,8 +236,8 @@ composer install --no-interaction --prefer-dist -o     # 首次
 rm -rf runtime/container                              # 清注解/DI 缓存
 php bin/hyperf.php migrate --force
 php bin/hyperf.php db:seed --path=databases/seeders --force   # 只跑一次！
-chown -R www:www runtime storage web
-chmod -R o+rX web storage/uploads
+chown -R www:www runtime storage
+chmod -R o+rX ../MineAdmin-Vue/dist storage/uploads
 ```
 
 `db:seed` 会灌菜单和默认账号 `admin / 123456`。**只能跑一次**，重复跑会插重复菜单；所以脚本用 `.deploy/native-installed` 做了标记，`update.sh` 不会重复 seed。
@@ -353,33 +353,39 @@ powershell -File scripts\remote.ps1 -Native watch
 
 ## 6. 前端
 
-前端产物必须落到 `MineAdmin/web`（Nginx 的站点根目录）。两种方式：
+站点根目录就是 `MineAdmin-Vue/dist`。默认 `FRONTEND_MODE=repo`：**`dist` 已在仓库里，服务器只 `git pull`，不构建**（详见 [12-前端dist静态托管](12-前端dist静态托管.md)）。
 
-**A. 服务器上构建**（`install.sh` / `update.sh` 默认尝试）
+```bash
+# 服务器上什么都不用做，update.sh 会自动跳过前端
+bash /opt/hyperfstu/deploy/native/update.sh --skip-pull
+```
+
+### 6.1 改了前端怎么办
+
+本地构建 → 提交 dist → 推送，服务器 pull 即可：
+
+```powershell
+cd D:\code\hyperfstu
+powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Native -BuildFrontend -Message "feat: 新页面"
+```
+
+`-BuildFrontend` 会先跑 `pnpm build`，再把新的 `MineAdmin-Vue/dist` 一起提交。
+
+### 6.2 想在服务器上构建
+
+把 `deploy/.env` 改成：
+
+```ini
+FRONTEND_MODE=build
+```
+
+然后 `update.sh` 会自己构建（需要 Node 22）：
 
 ```bash
 bash /opt/hyperfstu/deploy/native/update.sh --skip-pull
 ```
 
-脚本会自动找 `/www/server/nodejs/*/bin` 并 `corepack` 启用 pnpm。也可以先在宝塔「Node.js 版本管理器」装 Node 22：
-
-```bash
-node -v && pnpm -v
-cd /opt/hyperfstu/MineAdmin-Vue
-pnpm install --frozen-lockfile && pnpm build
-rm -rf ../MineAdmin/web && mkdir -p ../MineAdmin/web
-cp -a dist/. ../MineAdmin/web/
-```
-
-**B. 本地构建后上传**
-
-```powershell
-cd D:\code\hyperfstu\MineAdmin-Vue
-pnpm install --frozen-lockfile
-pnpm build
-# 上传（示例，路径按需改）
-scp -r dist/* root@你的服务器:/opt/hyperfstu/MineAdmin/web/
-```
+> ⚠️ `FRONTEND_MODE=repo` 时**不要**在服务器上手动 `pnpm build`：`dist` 会变成未提交改动，下次 `git pull --ff-only` 直接失败。真跑过就 `git checkout -- MineAdmin-Vue/dist` 还原。
 
 `.env.production` 里的 `VITE_OPEN_PROXY=true` + `VITE_PROXY_PREFIX=/prod` 决定了浏览器请求 `/prod/...`，所以 Nginx 必须有那个 `location ^~ /prod/`。
 
@@ -393,7 +399,7 @@ scp -r dist/* root@你的服务器:/opt/hyperfstu/MineAdmin/web/
 |---|---|
 | 域名 | 你的域名 / 临时用服务器 IP |
 | PHP 版本 | **纯静态** |
-| 网站目录 | `/opt/hyperfstu/MineAdmin/web` |
+| 网站目录 | `/opt/hyperfstu/MineAdmin-Vue/dist` |
 | 伪静态 | 无 |
 
 然后把 `deploy/bt/nginx-site.conf` 的内容粘进这个站点的 `server { }` 里（网站 → 设置 → 配置文件）。核心还是：
@@ -413,7 +419,7 @@ location ^~ /prod/ {
 
 ```bash
 chmod o+x /opt /opt/hyperfstu /opt/hyperfstu/MineAdmin
-chmod -R o+rX /opt/hyperfstu/MineAdmin/web /opt/hyperfstu/MineAdmin/storage/uploads
+chmod -R o+rX /opt/hyperfstu/MineAdmin-Vue/dist /opt/hyperfstu/MineAdmin/storage/uploads
 /www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
 ```
 
@@ -456,7 +462,7 @@ bash deploy/native/update.sh --skip-pull
 2. `composer.lock` 比 `vendor/composer/installed.json` 新才 install
 3. `rm -rf runtime/container`
 4. `migrate --force`
-5. 前端有变化就 build 并同步到 `MineAdmin/web`
+5. 前端：`FRONTEND_MODE=repo` 直接用仓库里的 `MineAdmin-Vue/dist`；`build` 时才 build 到同一目录
 6. `chown www runtime storage web`
 7. `manage.sh restart`
 
@@ -534,9 +540,9 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 - [ ] `MineAdmin/.env`：`APP_ENV=prod`、`SWAGGER_ENABLED=true`、`SERVER_HOST=127.0.0.1`、DB/Redis 都是 `127.0.0.1`
 - [ ] `composer install` 成功，`vendor/autoload.php` 存在
 - [ ] `migrate --force` 成功，`.deploy/native-installed` 已生成（seed 只跑一次）
-- [ ] `MineAdmin/web/index.html` 存在（前端已构建）
+- [ ] `MineAdmin-Vue/dist/index.html` 存在（repo 模式下由 git 提供）
 - [ ] `manage.sh status` 显示运行中；`curl 127.0.0.1:9501` 返回 422
-- [ ] 宝塔站点：纯静态 + 根目录 `MineAdmin/web` + `location ^~ /prod/` 带尾斜杠
+- [ ] 宝塔站点：纯静态 + 根目录 `MineAdmin-Vue/dist` + `location ^~ /prod/` 带尾斜杠
 - [ ] 9501 只监听 `127.0.0.1`；安全组/防火墙不放行 9501
 - [ ] 用 Supervisor 托管时，`numprocs=1`、用户 `www`、命令不带 `-d`
 - [ ] 上线前删掉 `ProxyDebugController` 和 Nginx 里的 `/__echo`

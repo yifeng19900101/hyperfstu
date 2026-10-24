@@ -1,0 +1,1 @@
+import{b as e,k as r,mt as a}from"./runtime-core.esm-bundler-CD9fp9Xz.js";var t={class:"my-1 h-[1px] w-full bg-gray-1 dark-bg-dark-2"},_=r({name:"MDropdownDivider",__name:"divider",setup(d){return(i,o)=>(a(),e("div",t))}}),n=_;export{n as default};

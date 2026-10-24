@@ -1,15 +1,22 @@
-* text=auto
+# ===== 构建产物：不要做换行符转换 =====
+# dist/ 是构建出来的，Git 一旦按文本处理（CRLF 转换、diff 空白清理）
+# 就会破坏 js/css 的哈希一致性和压缩文件，这里整体按二进制看待。
+MineAdmin-Vue/dist/** -text -diff
 
-# 服务器是 Linux，这些文件必须保持 LF，否则 bash 会报 "\r: command not found"
-*.sh   text eol=lf
-*.conf text eol=lf
-*.yml  text eol=lf
-*.yaml text eol=lf
-*.php  text eol=lf
-*.md   text eol=lf
-*.json text eol=lf
+# 二进制资源
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.gz binary
+*.br binary
+*.zip binary
 
-# Windows 脚本保持 CRLF
-*.ps1 text eol=crlf
-*.bat text eol=crlf
-*.cmd text eol=crlf
+# ===== 脚本：强制 LF，避免在 Windows 上被 CRLF 破坏后传到 Linux 报 \r 错误 =====
+*.sh text eol=lf

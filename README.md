@@ -55,12 +55,13 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap-native.ps1 -DbUser mi
 9. [Nginx 反向代理与请求头](docs/09-Nginx反向代理与请求头.md)
 10. [宝塔面板部署](docs/10-宝塔面板部署.md)
 11. [不用 Docker 启动](docs/11-不用Docker启动.md)
+12. [前端 dist 静态托管](docs/12-前端dist静态托管.md)
 
 ## 目录
 
 - `MineAdmin/`：后端源码（3.2 分支），包含本地 `vendor/` 供阅读
 - `MineAdmin/lab/swoole/`：7 个可运行的 Swoole 实验
-- `MineAdmin-Vue/`：前端源码（Vue3 + Vite，构建产物同步到 `MineAdmin/web/`，由 Nginx 托管）
+- `MineAdmin-Vue/`：前端源码（Vue3 + Vite）；`dist/` 提交进仓库，域名直接指向它（见 docs/12）
 - `deploy/`：服务器 compose（app + nginx + mysql + redis）、Nginx 配置、更新脚本
 - `deploy/native/`：不用 docker 时的安装 / 更新 / 进程管理脚本（宝塔 PHP 直跑）
 - `scripts/`：初始化 / 发布 / 同步 / 日志 / 运行 lab
@@ -72,5 +73,6 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap-native.ps1 -DbUser mi
 - 路由由 `hyperf/swagger` 注解自动注册，**必须 `SWAGGER_ENABLED=true`**
 - 热更新：`ScanFileDriver`，每 2 秒扫描 `app`、`config`、`.env`
 - 前端生产 API 前缀 `/prod`，由 Nginx 去前缀反代到 Swoole
+- 站点根目录 = `MineAdmin-Vue/dist`（提交在仓库里），`FRONTEND_MODE=repo` 时服务器不构建
 - `composer.lock` 已按 PHP 8.3 重新生成，服务器执行 `composer install`
-- Windows 本地跑不了 Swoole，运行一律在服务器容器内
+- Windows 本地跑不了 Swoole，运行一律在服务器上

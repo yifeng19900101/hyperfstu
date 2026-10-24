@@ -103,7 +103,7 @@ fi
 
 head_ "依赖"
 [ -f "$APP_DIR/vendor/autoload.php" ] && ok "vendor/ 已安装" || bad "vendor/ 缺失，先 composer install"
-[ -f "$APP_DIR/web/index.html" ] && ok "MineAdmin/web/index.html 存在（前端已构建）" || warn2 "MineAdmin/web 没有前端产物，首页会 404/403"
+[ -f "$WEB_DIR/index.html" ] && ok "MineAdmin-Vue/dist/index.html 存在（前端产物就绪）" || bad "MineAdmin-Vue/dist 没有 index.html，首页会 404/403。FRONTEND_MODE=repo 时应由 git 提供"
 
 head_ "目录权限"
 id www >/dev/null 2>&1 && RUNU=www || RUNU="$(id -un)"

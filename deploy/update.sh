@@ -88,39 +88,42 @@ else
     "${COMPOSE[@]}" run --rm -T --no-deps app php bin/hyperf.php migrate --force
 fi
 
-log "构建前端"
 DIST="MineAdmin-Vue/dist"
-FRONT_CHANGED=0
-if [ "$SKIP_FRONTEND" = 1 ]; then
+FRONTEND_MODE="$(grep -E '^FRONTEND_MODE=' deploy/.env | head -n1 | cut -d= -f2 || true)"
+FRONTEND_MODE="${FRONTEND_MODE:-repo}"
+
+if [ "$FRONTEND_MODE" = "repo" ]; then
+    # dist 在仓库里，git pull 已经把它更新了。这里绝对不能再构建：
+    # 一旦本地生成新文件，工作区就脏了，下次 git pull --ff-only 会直接失败。
+    if [ -f "$DIST/index.html" ]; then
+        echo "前端产物来自仓库（FRONTEND_MODE=repo），跳过构建与复制"
+    else
+        echo "错误：FRONTEND_MODE=repo 但 $DIST/index.html 不存在。"
+        echo "      在本地 pnpm build 后提交 dist，或把 deploy/.env 改成 FRONTEND_MODE=build"
+        exit 1
+    fi
+elif [ "$SKIP_FRONTEND" = 1 ]; then
     echo "已指定 --skip-frontend，跳过前端构建"
-    FRONT_CHANGED=-1
-fi
-if [ "$FRONT_CHANGED" = -1 ]; then
-    :
-elif [ ! -f "$DIST/index.html" ]; then
-    FRONT_CHANGED=1
-elif [ -n "$(find MineAdmin-Vue/src MineAdmin-Vue/public MineAdmin-Vue/index.html \
-        MineAdmin-Vue/package.json MineAdmin-Vue/pnpm-lock.yaml \
-        -newer "$DIST/index.html" -print -quit 2>/dev/null)" ]; then
-    FRONT_CHANGED=1
-fi
-
-if [ "$FRONT_CHANGED" = 1 ]; then
-    mkdir -p "$DIST"
-    docker run --rm -v "$ROOT/MineAdmin-Vue:/app" -w /app node:22-alpine \
-        sh -c "corepack enable >/dev/null 2>&1 || true; pnpm install --frozen-lockfile && pnpm build"
 else
-    echo "前端源码无变化，跳过构建"
+    log "构建前端"
+    FRONT_CHANGED=0
+    if [ ! -f "$DIST/index.html" ]; then
+        FRONT_CHANGED=1
+    elif [ -n "$(find MineAdmin-Vue/src MineAdmin-Vue/public MineAdmin-Vue/index.html \
+            MineAdmin-Vue/package.json MineAdmin-Vue/pnpm-lock.yaml \
+            -newer "$DIST/index.html" -print -quit 2>/dev/null)" ]; then
+        FRONT_CHANGED=1
+    fi
+    if [ "$FRONT_CHANGED" = 1 ]; then
+        mkdir -p "$DIST"
+        docker run --rm -v "$ROOT/MineAdmin-Vue:/app" -w /app node:22-alpine \
+            sh -c "corepack enable >/dev/null 2>&1 || true; pnpm install --frozen-lockfile && pnpm build"
+    else
+        echo "前端源码无变化，跳过构建"
+    fi
 fi
-
-# 最终对外目录是 MineAdmin/web（nginx 的 root），dist 只是构建缓存
-log "同步前端到 MineAdmin/web"
-mkdir -p MineAdmin/web
-if [ -f "$DIST/index.html" ]; then
-    cp -a "$DIST/." MineAdmin/web/
-else
-    echo "警告：$DIST/index.html 不存在，MineAdmin/web 可能为空"
-fi
+# 站点根目录始终是 MineAdmin-Vue/dist，不再往 MineAdmin/web 复制一份
+chmod -R o+rX "$DIST" 2>/dev/null || true
 
 log "启动 / 更新容器"
 # 宝塔等面板已经占用 80 端口时，USE_DOCKER_NGINX=0，只启动 app/mysql/redis，
@@ -159,7 +162,7 @@ if [ "$USE_DOCKER_NGINX" = "1" ]; then
     fi
 else
     echo "部署完成。docker nginx 已禁用，请在宝塔面板配置站点："
-    echo "  站点根目录 : $ROOT/MineAdmin/web"
+    echo "  站点根目录 : $ROOT/MineAdmin-Vue/dist"
     echo "  反向代理   : /prod  ->  http://127.0.0.1:$APP_PORT"
     echo "  详细步骤   : docs/10-宝塔面板部署.md"
 fi

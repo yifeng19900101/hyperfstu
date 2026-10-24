@@ -1,0 +1,1 @@
+import{a as n}from"./useUserStore-CgnAHAmr.js";function u(){return n().get("/admin/menu/list")}function r(e){return n().post("/admin/menu",e)}function i(e,t){return n().put(`/admin/menu/${e}`,t)}function m(e){return n().delete("/admin/menu",{data:e})}export{i,m as n,u as r,r as t};

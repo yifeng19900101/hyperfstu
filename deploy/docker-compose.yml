@@ -52,8 +52,8 @@ services:
       - "${WEB_PORT:-80}:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-      # 构建脚本会把 MineAdmin-Vue/dist 同步到 MineAdmin/web
-      - ../MineAdmin/web:/usr/share/nginx/html:ro
+      # 前端产物就是 MineAdmin-Vue/dist（已提交进仓库），nginx 直接读它
+      - ../MineAdmin-Vue/dist:/usr/share/nginx/html:ro
       - ../MineAdmin/storage/uploads:/srv/uploads:ro
       - /etc/localtime:/etc/localtime:ro
     depends_on:

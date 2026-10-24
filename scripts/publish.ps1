@@ -3,12 +3,38 @@ param(
     [string]$Message = '',
     [switch]$SkipDeploy,
     # 服务器不用 Docker（宝塔 PHP 直跑）时加这个开关
-    [switch]$Native
+    [switch]$Native,
+    # 发布前在本地 pnpm build，把新的 dist 一起提交（FRONTEND_MODE=repo 时用）
+    [switch]$BuildFrontend
 )
 
 . "$PSScriptRoot\common.ps1"
 
-Write-Step '1/3 提交本地修改'
+if ($BuildFrontend) {
+    Write-Step '0/4 构建前端（本地 pnpm build）'
+    if (-not (Test-Path -LiteralPath $script:LocalFrontRoot)) {
+        throw "找不到前端目录：$($script:LocalFrontRoot)"
+    }
+    $nodeVersion = & node -v 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $nodeVersion) {
+        throw '本机没有 node。装 Node 22 后再用 -BuildFrontend，或手动 cd MineAdmin-Vue; pnpm build'
+    }
+    Write-Info "node $nodeVersion"
+    if (-not (Test-Path -LiteralPath (Join-Path $script:LocalFrontRoot 'node_modules'))) {
+        Write-Info 'node_modules 不存在，先 pnpm install'
+        & pnpm --dir $script:LocalFrontRoot install --frozen-lockfile
+        if ($LASTEXITCODE -ne 0) { throw 'pnpm install 失败' }
+    }
+    Write-Info 'pnpm build ...'
+    & pnpm --dir $script:LocalFrontRoot build
+    if ($LASTEXITCODE -ne 0) { throw 'pnpm build 失败' }
+    if (-not (Test-Path -LiteralPath (Join-Path $script:LocalFrontRoot 'dist\index.html'))) {
+        throw 'build 完成但没有 dist\index.html'
+    }
+    Write-Ok 'dist 已更新，将随本次提交一起推送'
+}
+
+Write-Step '1/4 提交本地修改'
 # 全程只用一个 main 分支：不在 main 上就直接中止
 Assert-OnMainBranch | Out-Null
 
@@ -30,7 +56,7 @@ else {
     Write-Ok '没有新修改，跳过 commit'
 }
 
-Write-Step '2/3 推送到 GitHub'
+Write-Step '2/4 推送到 GitHub'
 $origin = & git -C $script:ProjectRoot remote get-url origin 2>$null
 if ($LASTEXITCODE -ne 0 -or -not $origin) {
     throw @"
@@ -50,7 +76,7 @@ if ($SkipDeploy) {
     return
 }
 
-Write-Step '3/3 服务器拉取并发布'
+Write-Step '3/4 服务器拉取并发布'
 if ($Native) {
     Invoke-SshStream "cd '$RemotePath' && bash deploy/native/update.sh --php-bin='$PhpBin'"
 }

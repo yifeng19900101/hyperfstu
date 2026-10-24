@@ -1,0 +1,1 @@
+function e(){return document.body.offsetHeight-(document.querySelector(".mine-bars")?.offsetHeight??0)-(document.querySelector(".mine-header-main")?.offsetHeight??0)-(document.querySelector(".mine-footer")?.offsetHeight??0)-48}export{e as t};

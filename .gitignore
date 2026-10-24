@@ -15,7 +15,11 @@ MineAdmin/.php-cs-fixer.cache
 
 # ===== 前端 =====
 MineAdmin-Vue/node_modules/
-MineAdmin-Vue/dist/
+# dist/ 是要提交的（域名直接指向它），这里不忽略
+MineAdmin-Vue/dist.zip
+MineAdmin-Vue/dist.tar.gz
+MineAdmin-Vue/dist-*.zip
+MineAdmin-Vue/dist-*.tar.gz
 MineAdmin-Vue/.eslintcache
 MineAdmin-Vue/test-results/
 MineAdmin-Vue/playwright-report/

@@ -122,6 +122,7 @@ if (-not (Test-Path -LiteralPath $deployEnvLocal)) {
         $envText = ($remoteEnv -split "`r?`n" | Where-Object { $_ -match '^(USE_DOCKER_NGINX|WEB_PORT|APP_PORT|DB_ROOT_PASSWORD|DB_DATABASE|DB_EXPOSE_PORT|REDIS_EXPOSE_PORT)=' }) -join "`n"
         if ($envText -notmatch '(?m)^WEB_PORT=') { $envText = "WEB_PORT=80`n$envText" }
         if ($envText -notmatch '(?m)^USE_DOCKER_NGINX=') { $envText = "USE_DOCKER_NGINX=1`n$envText" }
+        if ($envText -notmatch '(?m)^FRONTEND_MODE=') { $envText = "FRONTEND_MODE=repo`n$envText" }
         [IO.File]::WriteAllText($deployEnvLocal, $envText, (New-Object System.Text.UTF8Encoding($false)))
         Write-Ok '已从服务器取回 deploy/.env'
     }
@@ -129,6 +130,9 @@ if (-not (Test-Path -LiteralPath $deployEnvLocal)) {
         $dbPassword = New-RandomString 24
         $content = @"
 USE_DOCKER_NGINX=1
+# 前端产物：repo = dist 已提交在仓库里，站点根目录直接指向 MineAdmin-Vue/dist
+#           build = 服务器上构建
+FRONTEND_MODE=repo
 WEB_PORT=80
 APP_PORT=9501
 DB_ROOT_PASSWORD=$dbPassword
@@ -212,8 +216,8 @@ if ($useDockerNginx -eq '1') {
 else {
     # 宝塔模式：容器已启动，但站点还没在面板里配置，先只验证后端直连
     $appCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$appPort/admin/passport/login" -Quiet -AllowFail).Trim()
-    $webBuilt = (Invoke-Ssh "test -f '$RemotePath/MineAdmin/web/index.html' && echo yes || echo no" -Quiet -AllowFail).Trim()
-    Write-Host "    后端直连 HTTP：$appCode    MineAdmin/web/index.html：$webBuilt"
+    $webBuilt = (Invoke-Ssh "test -f '$RemotePath/MineAdmin-Vue/dist/index.html' && echo yes || echo no" -Quiet -AllowFail).Trim()
+    Write-Host "    后端直连 HTTP：$appCode    MineAdmin-Vue/dist/index.html：$webBuilt"
     if ($appCode -eq '000' -or $appCode -eq '502') {
         Write-Host '    后端没起来，检查：powershell -File scripts\remote.ps1 logs' -ForegroundColor Yellow
     }
@@ -232,11 +236,11 @@ if ($useDockerNginx -eq '1') {
 else {
     Write-Host '  还需要在宝塔面板完成两步（只做一次）：'
     Write-Host '    1) 网站 → 添加站点（域名/临时域名都行）→ PHP 版本选「纯静态」'
-    Write-Host "    2) 网站目录改成：$RemotePath/MineAdmin/web"
+    Write-Host "    2) 网站目录改成：$RemotePath/MineAdmin-Vue/dist"
     Write-Host '    3) 设置 → 配置文件，把 deploy/bt/nginx-site.conf 里的内容粘进 server { }'
     Write-Host '    4) Nginx 需要能读产物：'
-    Write-Host "         chmod o+x $RemotePath $RemotePath/MineAdmin"
-    Write-Host "         chmod -R o+rX $RemotePath/MineAdmin/web $RemotePath/MineAdmin/storage/uploads"
+    Write-Host "         chmod o+x $RemotePath $RemotePath/MineAdmin $RemotePath/MineAdmin-Vue"
+    Write-Host "         chmod -R o+rX $RemotePath/MineAdmin-Vue/dist $RemotePath/MineAdmin/storage/uploads"
     Write-Host ''
     Write-Host "  配好后的访问地址 : http://<你的域名>/"
     Write-Host "  后端直连（调试） : http://127.0.0.1:$appPort （只能在服务器上访问）"

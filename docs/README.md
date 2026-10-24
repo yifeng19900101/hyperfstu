@@ -34,6 +34,7 @@ D:\code\hyperfstu
 | 9 | [09-Nginx反向代理与请求头](09-Nginx反向代理与请求头.md) | 代理配置、header 传递、后端取参、真实 IP |
 | 10 | [10-宝塔面板部署](10-宝塔面板部署.md) | 服务器用宝塔时：面板 Nginx 做入口、docker 只跑应用 |
 | 11 | [11-不用Docker启动](11-不用Docker启动.md) | 完全不用 docker：宝塔 PHP + Swoole 直接常驻 |
+| 12 | [12-前端dist静态托管](12-前端dist静态托管.md) | 本地构建 → 提交 dist → 域名直接指向 dist 目录 |
 
 ## 三条命令先记住
 

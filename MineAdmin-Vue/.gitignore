@@ -1,7 +1,12 @@
 node_modules
 .DS_Store
-dist*
+# dist/ 提交进仓库，由域名直接静态托管（见 docs/12-前端dist静态托管.md）
+# 下面这些仍然忽略：历史产物、其他模式的产物、本地打包存档
 dist-ssr
+dist.zip
+dist.tar.gz
+dist-*.zip
+dist-*.tar.gz
 *.local
 .eslintcache
 .stylelintcache
