@@ -36,6 +36,13 @@ if [ "$SKIP_PULL" = "0" ] && [ -d "$ROOT/.git" ]; then
         die "服务器仓库当前在分支「$CURRENT_BRANCH」，本项目只用 main。
 请先执行：cd $ROOT && git checkout main"
     fi
+    # 迁移保护：dist 从「本地构建产物」变成「仓库文件」，旧服务器上的 dist
+    # 是未跟踪文件，直接 pull 会被 Git 拒绝覆盖。这里先删掉让它接管。
+    if [ -d "$ROOT/MineAdmin-Vue/dist" ] \
+        && [ -z "$(git -C "$ROOT" ls-tree -r --name-only HEAD -- MineAdmin-Vue/dist | head -n1)" ]; then
+        echo "检测到尚未纳入版本管理的旧 dist，先删除让 Git 接管"
+        rm -rf "$ROOT/MineAdmin-Vue/dist"
+    fi
     log "拉取 GitHub 最新代码（main）"
     git -C "$ROOT" pull --ff-only origin main
 fi

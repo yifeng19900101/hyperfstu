@@ -47,6 +47,25 @@ FRONTEND_MODE=repo
 
 产物现状：**215 个文件、约 9.2 MB**（关掉预压缩后）。
 
+### 2.1 老服务器的一次性迁移
+
+以前 `dist` 是被忽略的本地构建产物。服务器上如果已经有这个目录（未跟踪），直接 `git pull` 会失败：
+
+```
+error: Untracked working tree files would be overwritten by merge:
+        MineAdmin-Vue/dist/index.html
+```
+
+`deploy/update.sh` 和 `deploy/native/update.sh` 已经加了保护：拉代码前如果发现 `dist` 存在但**还没被 HEAD 跟踪**，会先 `rm -rf` 它，让 Git 接管。你也可以手动来一遍：
+
+```bash
+cd /www/wwwroot/hyperfstu
+git ls-files MineAdmin-Vue/dist | head -1     # 没有输出 = 还没被跟踪
+rm -rf MineAdmin-Vue/dist                      # 放心删，产物在仓库里
+git pull --ff-only origin main
+ls MineAdmin-Vue/dist/index.html              # 应该存在
+```
+
 ---
 
 ## 3. 日常发布流程

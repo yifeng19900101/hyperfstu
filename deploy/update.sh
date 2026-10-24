@@ -38,6 +38,14 @@ if [ "$SKIP_PULL" = 0 ] && [ -d .git ]; then
         echo "请先执行：cd $ROOT && git checkout main"
         exit 1
     fi
+    # 迁移保护：dist 从「本地构建产物」变成「仓库文件」。
+    # 老服务器上 dist 是本地生成、未被跟踪的，直接 pull 会报
+    # "untracked working tree files would be overwritten by merge"。
+    if [ -d "$ROOT/MineAdmin-Vue/dist" ] \
+        && [ -z "$(git -C "$ROOT" ls-tree -r --name-only HEAD -- MineAdmin-Vue/dist | head -n1)" ]; then
+        echo "检测到尚未纳入版本管理的旧 dist，先删除让 Git 接管"
+        rm -rf "$ROOT/MineAdmin-Vue/dist"
+    fi
     log "拉取 GitHub 最新代码（main）"
     git pull --ff-only origin main
 fi
