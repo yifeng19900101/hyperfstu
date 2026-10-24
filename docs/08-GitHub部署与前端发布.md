@@ -74,6 +74,9 @@ git push -u origin main
 
 > 如果 `git push` 弹窗，按提示登录 GitHub 即可（Windows 凭据管理器会记住）。
 > 之后日常发布直接运行 `scripts\publish.ps1`，它会自动 add / commit / push / 远程部署。
+> 
+> sudo -u www git fetch origin
+sudo -u www git switch -c main --track origin/main
 
 ### 2.3 填写服务器配置
 

@@ -71,11 +71,38 @@ if (-not $phpVersion -or $phpVersion -match 'not found|No such file') {
     throw @"
 在服务器上找不到 PHP：$PhpBin
 1) 宝塔面板 → 软件商店 → 安装 PHP 8.3
-2) 命令行确认路径：ls /www/server/php/
+2) 命令行确认路径：
+     ls /www/server/php/
+     $PhpBin -v
 3) 用 -PhpBin 指定，例如 -PhpBin /www/server/php/83/bin/php
 "@
 }
 Write-Ok "PHP $phpVersion（$PhpBin）"
+
+# putenv / getenv 被禁用时 Hyperf 会崩在 DotenvManager：
+#   RuntimeException: None has no value. (phpoption/None.php)
+# 用 here-string 拼命令，避免 PowerShell 双引号里嵌套 PHP 的引号
+$putenvProbe = @"
+'$PhpBin' -r 'echo (function_exists("putenv") && function_exists("getenv")) ? 1 : 0;'
+"@
+$hasPutenv = (Invoke-Ssh $putenvProbe -Quiet -AllowFail).Trim()
+if ($hasPutenv -ne '1') {
+    $disabledProbe = @"
+'$PhpBin' -r 'echo ini_get("disable_functions");'
+"@
+    $disabledNow = (Invoke-Ssh $disabledProbe -Quiet -AllowFail).Trim()
+    throw @"
+putenv / getenv 被禁用，Hyperf 无法读取 .env（会报 None has no value）。
+
+当前 disable_functions：$disabledNow
+
+处理：宝塔面板 → 软件商店 → PHP-8.3 → 设置 → 禁用函数，
+      删掉 putenv 和 getenv，保存后重试。
+验证（两条都应为 true）：
+  $PhpBin -r 'var_dump(function_exists("putenv"), function_exists("getenv"));'
+"@
+}
+Write-Ok 'getenv / putenv 可用'
 
 $extList = (Invoke-Ssh "'$PhpBin' -m" -Quiet -AllowFail).ToLower()
 $missing = @()

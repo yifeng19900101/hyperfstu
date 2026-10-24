@@ -15,8 +15,8 @@ if (-not (Test-Path -LiteralPath $configFile)) {
 if (-not $RemoteHost -or -not $RemoteUser -or -not $RemotePath) {
     throw 'deploy.config.ps1 中 RemoteHost / RemoteUser / RemotePath 不能为空。'
 }
-if ($RemotePath -notmatch '^/(opt|srv|var/www|home|root)/[A-Za-z0-9._/-]+$') {
-    throw "RemotePath 看起来不安全：$RemotePath。同步会删除远端多余文件，必须是 /opt/xxx 这样的具体目录。"
+if ($RemotePath -notmatch '^/(opt|srv|var/www|home|root|www)/[A-Za-z0-9._/-]+$') {
+    throw "RemotePath 看起来不安全：$RemotePath。同步会删除远端多余文件，必须是 /opt/xxx、/www/wwwroot/xxx 这样的具体目录。"
 }
 $RemotePath = $RemotePath.TrimEnd('/')
 if (-not $AppContainer) { $AppContainer = 'mineadmin-app' }

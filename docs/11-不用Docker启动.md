@@ -4,6 +4,8 @@
 >
 > 本篇接 [10-宝塔面板部署](10-宝塔面板部署.md)。区别只是把 `app` 容器换成了宿主机上的一个 PHP 进程，Nginx 配置完全一样。
 
+> 本篇示例目录统一写 `/opt/hyperfstu`。宝塔建站时默认是 `/www/wwwroot/hyperfstu` 这类路径，两者都行（脚本的 `RemotePath` 校验同时支持 `/opt`、`/srv`、`/var/www`、`/home`、`/root`、`/www`），照着你自己的实际路径替换即可。
+
 ---
 
 ## 1. 两种跑法对比
@@ -109,9 +111,27 @@ date.timezone = Asia/Shanghai
 再到 设置 → **禁用函数**，把这些删掉（宝塔默认禁了，Swoole/Supervisor/composer 会踩到）：
 
 ```
-proc_open  popen  putenv  pcntl_alarm  pcntl_fork  pcntl_waitpid
-pcntl_wait  pcntl_signal  pcntl_signal_dispatch  pcntl_getpriority  pcntl_setpriority
+putenv  getenv  proc_open  popen
+pcntl_alarm  pcntl_fork  pcntl_waitpid  pcntl_wait
+pcntl_signal  pcntl_signal_dispatch  pcntl_getpriority  pcntl_setpriority
 ```
+
+> ⚠️ **`putenv` / `getenv` 必须可用**，否则 Hyperf 连启动都到不了：
+>
+> ```
+> PHP Fatal error: Uncaught RuntimeException: None has no value.
+>   in vendor/phpoption/phpoption/src/PhpOption/None.php:45
+> #0 vendor/hyperf/support/src/DotenvManager.php(73): PhpOption\None->get()
+> #1 vendor/hyperf/support/src/DotenvManager.php(60): ...getAdapter()
+> ```
+>
+> 原因：`phpdotenv` 的 `PutenvAdapter::create()` 会判断 `function_exists('getenv') && function_exists('putenv')`，任一被禁用就返回 `None`，而 Hyperf 对这个 `None` 调了 `->get()`。报错和 `.env`、数据库都无关，别去查配置。
+>
+> 修好之后验证（两条都得是 `bool(true)`）：
+>
+> ```bash
+> php -r 'var_dump(function_exists("putenv"), function_exists("getenv"));'
+> ```
 
 改完在面板里保存，会重载 PHP-FPM（CLI 下次执行就是新配置）。
 
@@ -454,7 +474,19 @@ bash deploy/native/update.sh --skip-pull
 | `MineAdmin/runtime/hyperf.pid` | 主进程 PID |
 | `/www/wwwlogs/<域名>.error.log` | Nginx 错误 |
 
-三层定位法：
+### 10.1 先跑自检
+
+不确定坏在哪一层时，先跑这个（只读，不改任何东西）：
+
+```bash
+bash /www/wwwroot/hyperfstu/deploy/native/doctor.sh
+# 或指定 PHP
+bash deploy/native/doctor.sh --php-bin=/www/server/php/83/bin/php
+```
+
+它会逐项检查：PHP 路径/版本/实际加载的 ini、`putenv`/`getenv` 是否可用、扩展（swoole/redis/pdo_mysql/fileinfo/json/openssl/mbstring）、`swoole.use_shortname`、`.env` 里 `SWAGGER_ENABLED`/`SERVER_HOST` 等关键值、`vendor/` 和 `web/index.html` 是否存在、目录属主、MySQL/Redis 连通性、9501 监听状态。最后给出 `[OK]` / `[WARN]` / `[FAIL]` 汇总。
+
+### 10.2 三层定位法
 
 ```bash
 # ① 进程活着吗
@@ -474,6 +506,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 
 | 现象 | 原因 / 处理 |
 |---|---|
+| `RuntimeException: None has no value`（`phpoption/None.php`，调用栈里是 `DotenvManager::getAdapter`） | **`putenv` / `getenv` 被禁用**。宝塔 PHP 设置 → 禁用函数 里删掉这两项。与 `.env`、数据库无关 |
 | `ERROR Swoole short function names must be disabled...` | php.ini 加 `swoole.use_shortname=Off` |
 | `Class "Swoole\Coroutine" not found` | 用错了 PHP（系统 7.4）。全用绝对路径 |
 | 启动卡住不动，无输出 | 正常，前台常驻。`Ctrl+C` 退出 |
@@ -495,6 +528,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 
 - [ ] 宝塔装了 PHP 8.3，`/www/server/php/83/bin/php -v` 正常
 - [ ] `php -m` 有 swoole(>=5.0) / redis / pdo_mysql / fileinfo / json / openssl / mbstring
+- [ ] `function_exists('putenv') && function_exists('getenv')` 都是 true（否则报 `None has no value`）
 - [ ] `swoole.use_shortname=Off`，`disable_functions` 里没有 `proc_open` / `pcntl_*`
 - [ ] 宝塔数据库 `mineadmin` 可连；Redis `ping` 返回 PONG
 - [ ] `MineAdmin/.env`：`APP_ENV=prod`、`SWAGGER_ENABLED=true`、`SERVER_HOST=127.0.0.1`、DB/Redis 都是 `127.0.0.1`

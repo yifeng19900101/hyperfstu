@@ -76,13 +76,34 @@ check_php_env() {
 然后重载 PHP（宝塔 PHP 设置里保存即可）。" ;;
     esac
 
-    # 宝塔默认禁用了一批函数，composer 和 watcher 会用到
-    local disabled
-    disabled="$("$PHP_BIN" -r 'echo ini_get("disable_functions");')"
-    for fn in proc_open popen putenv pcntl_fork pcntl_signal; do
-        case ",$disabled," in
-            *",$fn,"*) warn "disable_functions 里有 $fn，composer / server:watch 可能失败。建议在宝塔 PHP 设置的「禁用函数」里删掉它。" ;;
-        esac
+    # getenv / putenv 必须是可用函数，否则 hyperf 的 DotenvManager 直接崩：
+    #   RuntimeException: None has no value.
+    #   at vendor/phpoption/phpoption/src/PhpOption/None.php
+    # 原因：phpdotenv 的 PutenvAdapter::create() 在 putenv/getenv 被禁用时返回 None，
+    #       Hyperf 对这个 None 调用了 ->get()。
+    if ! "$PHP_BIN" -r 'exit(function_exists("getenv") && function_exists("putenv") ? 0 : 1);'; then
+        local disabled_now
+        disabled_now="$("$PHP_BIN" -r 'echo ini_get("disable_functions");')"
+        die "putenv / getenv 被禁用，Hyperf 无法读取 .env（报错：None has no value）。
+
+当前 disable_functions：${disabled_now:-（空）}
+
+处理（二选一）：
+  1) 宝塔面板 → 软件商店 → PHP-8.3 → 设置 → 禁用函数，
+     把 putenv 和 getenv 删掉 → 保存。
+  2) 直接改 php.ini（路径看 php --ini 的输出，宝塔一般是
+     /www/server/php/83/etc/php.ini），从 disable_functions 里删掉这两项，再重载 PHP。
+
+改完验证（两条都应为 true）：
+  $PHP_BIN -r 'var_dump(function_exists(\"putenv\"), function_exists(\"getenv\"));'"
+    fi
+    log 'getenv / putenv 可用'
+
+    # 这些不是致命项，但 composer / server:watch / Swoole 进程管理会踩到
+    for fn in proc_open popen pcntl_fork pcntl_signal pcntl_signal_dispatch; do
+        if ! "$PHP_BIN" -r "exit(function_exists('$fn') ? 0 : 1);"; then
+            warn "disable_functions 里有 $fn，composer / server:watch / Swoole 可能出错。建议在宝塔 PHP 设置的「禁用函数」里删掉它。"
+        fi
     done
 
     local memory
