@@ -4,7 +4,8 @@
 
 对应文件：
 
-- Nginx 配置：`deploy/nginx/default.conf`
+- Nginx 配置：`deploy/nginx/default.conf`（docker 内 nginx 用这个）
+- 宝塔站点配置片段：`deploy/bt/nginx-site.conf`（服务器用宝塔时改这个，见 [10-宝塔面板部署](10-宝塔面板部署.md)）
 - 后端回显接口：`MineAdmin/app/Http/Admin/Controller/ProxyDebugController.php`
 - 信任代理中间件：`MineAdmin/app/Http/Common/Middleware/TrustedProxyMiddleware.php`
 - 测试脚本：`scripts/proxy.ps1`
@@ -12,6 +13,8 @@
 ---
 
 ## 1. 链路
+
+> 下面的配置基于「docker 内 nginx 直接对公网」。服务器装了宝塔时，把这一层换成面板 Nginx，`location` 内容基本一致，见 [10-宝塔面板部署](10-宝塔面板部署.md)。
 
 ```
 浏览器
