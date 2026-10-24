@@ -118,6 +118,14 @@ fi
 log "启动 / 更新容器"
 "${COMPOSE[@]}" up -d
 
+# nginx 的 default.conf 是挂载进去的，改完不会自动生效，必须校验后 reload。
+# nginx -t 失败会直接中断部署，避免带着错误配置继续跑。
+if [ "$(docker inspect -f '{{.State.Running}}' mineadmin-nginx 2>/dev/null || echo false)" = "true" ]; then
+    log "校验并重载 nginx 配置"
+    "${COMPOSE[@]}" exec -T nginx nginx -t
+    "${COMPOSE[@]}" exec -T nginx nginx -s reload
+fi
+
 WEB_PORT="$(grep -E '^WEB_PORT=' deploy/.env | head -n1 | cut -d= -f2 || true)"
 WEB_PORT="${WEB_PORT:-80}"
 if [ "$WEB_PORT" = "80" ]; then
