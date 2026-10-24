@@ -236,6 +236,20 @@ proxy_redirect off;             # 不改写后端返回的 Location
 
 `/uploads/` 用的是 `alias`，不是 `root`：`alias /srv/uploads/;` 表示把 `location` 匹配的那段**替换**成磁盘路径，所以 `/uploads/a.png` → `/srv/uploads/a.png`。
 
+**注意 `alias` 不能和 `try_files` 一起用**：`try_files` 会把完整 `$uri` 再拼一次，变成 `/srv/uploads//uploads/a.png`，必然 404。`/static/` 用的是 `root`，所以可以放心用 `try_files`。
+
+### 3.8 改完配置先验证
+
+配置文件挂载进容器后，先用 `nginx -t` 检查语法，再 reload：
+
+```bash
+# 在服务器 /opt/hyperfstu 下
+docker compose -f deploy/docker-compose.yml exec nginx nginx -t
+docker compose -f deploy/docker-compose.yml exec nginx nginx -s reload
+```
+
+`nginx -t` 输出 `syntax is ok` / `test is successful` 才算通过。直接 `reload` 一个语法错误的配置会保留旧配置继续跑，容易误以为改动生效了。
+
 ---
 
 ## 4. Nginx 变量速查
