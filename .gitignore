@@ -6,6 +6,7 @@ scripts/deploy.config.ps1
 
 # ===== PHP =====
 MineAdmin/vendor/
+MineAdmin/vendor.zip
 MineAdmin/runtime/
 MineAdmin/storage/uploads/
 MineAdmin/web/
