@@ -9,6 +9,7 @@ declare(strict_types=1);
  * @contact  root@imoi.cn
  * @license  https://github.com/mineadmin/MineAdmin/blob/master/LICENSE
  */
+use App\Http\Common\Middleware\TrustedProxyMiddleware;
 use Hyperf\Validation\Middleware\ValidationMiddleware;
 use Mine\Support\Middleware\CorsMiddleware;
 use Mine\Support\Middleware\RequestIdMiddleware;
@@ -16,6 +17,8 @@ use Mine\Support\Middleware\TranslationMiddleware;
 
 return [
     'http' => [
+        // 信任 nginx 转发的客户端 IP（必须放在最前面，后面所有中间件都能用到）
+        TrustedProxyMiddleware::class,
         // 请求ID中间件
         RequestIdMiddleware::class,
         // 多语言识别中间件

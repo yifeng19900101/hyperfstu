@@ -38,6 +38,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 6. [实战：写一个 CRUD 模块](docs/06-实战-写一个CRUD模块.md)
 7. [六周学习计划](docs/07-六周学习计划.md)
 8. [GitHub 部署与前端发布](docs/08-GitHub部署与前端发布.md)
+9. [Nginx 反向代理与请求头](docs/09-Nginx反向代理与请求头.md)
 
 ## 目录
 
