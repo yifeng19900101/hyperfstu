@@ -120,6 +120,27 @@ git check-ignore -v MineAdmin-Vue/dist/index.html   # 应该没有输出
 Select-String -Path MineAdmin-Vue\dist\static\js\*.js -Pattern 'VITE_PROXY_PREFIX' -List
 ```
 
+### 3.4 API 前缀必须在三处一致
+
+生产环境浏览器请求的是 `/hyperfproapi/...`，这个字符串来自构建时烘焙进 JS 的 `VITE_PROXY_PREFIX`。它必须和 Nginx 的 location 前缀一字不差，否则页面能开、接口全 404。
+
+| 位置 | 值 | 作用 |
+|---|---|---|
+| `MineAdmin-Vue/.env.production` | `VITE_PROXY_PREFIX = /hyperfproapi` | 构建时写进 JS，决定 axios 的 `baseURL` |
+| `deploy/bt/nginx-site.conf` | `location ^~ /hyperfproapi/` | 面板 Nginx 匹配并去前缀反代 |
+| `deploy/nginx/default.conf` | `location /hyperfproapi/` | docker nginx 模式下的同一件事 |
+
+`scripts/common.ps1` 里的 `$ApiPrefix = '/hyperfproapi'` 是 PowerShell 侧的单一来源，`proxy.ps1` / `publish.ps1` / `bootstrap.ps1` 都读它。
+
+**改前缀的正确顺序**：先改 `.env.production` → 再改两个 nginx 配置 → 改 `common.ps1` 的 `$ApiPrefix` → `pnpm build` 重新生成 dist → 提交推送 → 服务器重载 Nginx。只改其中一处会出现「静态资源正常、接口 404」这种半坏状态。
+
+验证烘焙结果：
+
+```powershell
+Select-String -Path MineAdmin-Vue\dist\static\js\useUserStore-*.js -Pattern 'VITE_PROXY_PREFIX'
+# 期望看到 VITE_PROXY_PREFIX:"/hyperfproapi"
+```
+
 ---
 
 ## 4. 宝塔建站：域名直接指向 dist
