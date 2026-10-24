@@ -102,10 +102,14 @@ swoole.use_shortname 当前是「$swooleShort」，Hyperf 要求必须为 Off。
 "@
 }
 
-Write-Step "2/6 克隆 / 更新 GitHub 仓库（$Branch）"
+Write-Step '2/6 克隆 / 更新 GitHub 仓库（只用 main 分支）'
 $isRepo = (Invoke-Ssh "test -d '$RemotePath/.git' && echo yes || echo no" -Quiet -AllowFail).Trim()
 if ($isRepo -eq 'yes') {
-    Invoke-Ssh "cd '$RemotePath' && git fetch --prune origin && git pull --ff-only origin '$Branch'" -Quiet
+    $remoteBranch = (Invoke-Ssh "cd '$RemotePath' && git rev-parse --abbrev-ref HEAD" -Quiet -AllowFail).Trim()
+    if ($remoteBranch -ne 'main') {
+        throw "服务器仓库当前在分支「$remoteBranch」，本项目只用 main。`n在服务器上执行：cd $RemotePath，然后 git checkout main"
+    }
+    Invoke-Ssh "cd '$RemotePath' && git fetch --prune origin && git pull --ff-only origin main" -Quiet
     Write-Ok '仓库已更新到最新'
 }
 else {
@@ -116,12 +120,12 @@ else {
     $parent = $RemotePath.Substring(0, $RemotePath.LastIndexOf('/'))
     Invoke-Ssh "mkdir -p '$parent'" -Quiet | Out-Null
     try {
-        Invoke-Ssh "GIT_TERMINAL_PROMPT=0 git clone --branch '$Branch' '$RepoUrl' '$RemotePath'" -Quiet
+        Invoke-Ssh "GIT_TERMINAL_PROMPT=0 git clone --single-branch --branch main '$RepoUrl' '$RemotePath'" -Quiet
     }
     catch {
         throw @"
 无法 clone 仓库：$RepoUrl
-1) 公开仓库：确认地址和分支（$Branch）正确
+1) 公开仓库：确认地址正确、且仓库里有 main 分支（本项目只用 main）
 2) 私有仓库：需要给服务器配置 Deploy Key（docs/08-GitHub部署与前端发布.md）
 3) 确认服务器能访问 github.com
 原始错误：$_

@@ -151,7 +151,7 @@ git clone https://github.com/你的用户名/hyperfstu.git
 cd hyperfstu
 ```
 
-（如果 `scripts/bootstrap.ps1` 已经跑过，直接 `cd /opt/hyperfstu && git pull`。）
+（如果 `scripts/bootstrap.ps1` 已经跑过，直接 `cd /opt/hyperfstu && git checkout main && git pull --ff-only origin main`。）
 
 ### 3.6 写 `MineAdmin/.env`
 
@@ -423,15 +423,16 @@ powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Native -Message "f
 ```
 
 ```bash
-# 服务器上手动
+# 服务器上手动（全程只用 main）
 cd /opt/hyperfstu
-git pull --ff-only
+git checkout main
+git pull --ff-only origin main
 bash deploy/native/update.sh --skip-pull
 ```
 
 原生模式的 `update.sh` 流程：
 
-1. `git pull --ff-only`
+1. 校验当前分支是 `main`，然后 `git pull --ff-only origin main`
 2. `composer.lock` 比 `vendor/composer/installed.json` 新才 install
 3. `rm -rf runtime/container`
 4. `migrate --force`

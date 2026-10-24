@@ -31,8 +31,13 @@ export PHP_BIN
 cd "$ROOT"
 
 if [ "$SKIP_PULL" = "0" ] && [ -d "$ROOT/.git" ]; then
-    log "拉取 GitHub 最新代码"
-    git pull --ff-only
+    CURRENT_BRANCH="$(git -C "$ROOT" rev-parse --abbrev-ref HEAD)"
+    if [ "$CURRENT_BRANCH" != "main" ]; then
+        die "服务器仓库当前在分支「$CURRENT_BRANCH」，本项目只用 main。
+请先执行：cd $ROOT && git checkout main"
+    fi
+    log "拉取 GitHub 最新代码（main）"
+    git -C "$ROOT" pull --ff-only origin main
 fi
 
 cd "$APP_DIR"

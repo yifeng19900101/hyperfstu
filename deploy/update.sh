@@ -31,8 +31,15 @@ if [ ! -f deploy/.env ]; then
 fi
 
 if [ "$SKIP_PULL" = 0 ] && [ -d .git ]; then
-    log "拉取 GitHub 最新代码"
-    git pull --ff-only
+    # 全程只用 main：服务器上如果被切到别的分支，直接停下来，避免「更新了但没生效」
+    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    if [ "$CURRENT_BRANCH" != "main" ]; then
+        echo "服务器仓库当前在分支「$CURRENT_BRANCH」，本项目只用 main。"
+        echo "请先执行：cd $ROOT && git checkout main"
+        exit 1
+    fi
+    log "拉取 GitHub 最新代码（main）"
+    git pull --ff-only origin main
 fi
 
 log "启动 MySQL / Redis"

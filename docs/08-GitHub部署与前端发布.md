@@ -5,7 +5,7 @@
 
 目标：本地改代码 → `git push` 到 GitHub → 服务器 `git pull` → 自动装依赖、迁移、构建前端 → 热更新生效。
 
-sudo -u www git clone https://github.com/yifeng19900101/hyperfstu.git
+> 分支策略：**全程只用 `main`**，不分 dev/prod、不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` 都会校验当前分支，不在 `main` 直接中止。
 
 这条链路替代了 01 里的「tar 覆盖同步」，更适合长期学习和多机协作。`sync.ps1` 仍然保留，用来做不提交的快速草稿。
 
@@ -89,10 +89,32 @@ $RemoteHost = '你的服务器IP'
 $RemoteUser = 'root'
 $RemotePath = '/opt/hyperfstu'
 $RepoUrl    = 'https://github.com/你的用户名/hyperfstu.git'   # 公开仓库
-$Branch     = 'main'
 ```
 
+分支不用配：**全程只用 `main`**，脚本里写死了，见 2.5。
+
 `scripts\deploy.config.ps1` 和 `deploy\.env` 都在 `.gitignore` 里，不会被推上去。
+
+### 2.5 分支策略：只用一个 main
+
+本工作区**不建功能分支、不分 dev/prod**，本地、GitHub、服务器三处永远是 `main`：
+
+| 环节 | 行为 |
+|---|---|
+| 本地 | 直接在 `main` 上改、提交；`publish.ps1` 检测到不在 `main` 会直接中止 |
+| GitHub | 默认分支设为 `main`；不保留其他分支 |
+| 服务器 | `install` / `update` 前都会校验当前分支，不是 `main` 就报错退出 |
+
+好处是「推了就一定生效」，不会出现「代码推上去了，服务器还停在旧分支」这种最难查的问题。代价是不能并行开发两条线——学习阶段不需要。
+
+GitHub 上的设置（只做一次）：仓库 → Settings → General → Default branch 改成 `main`；如果有残留的其他分支，在 Branches 页面删掉。
+
+本地核对：
+
+```powershell
+git branch -a          # 只应该有 main
+git rev-parse --abbrev-ref HEAD   # 输出 main
+```
 
 ### 2.4 私有仓库：给服务器配 Deploy Key
 
@@ -172,7 +194,8 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 服务器端 `deploy/update.sh` 实际做的事：
 
 ```bash
-git pull --ff-only
+# 先校验在 main 分支，不在就退出
+git pull --ff-only origin main
 docker compose up -d mysql redis
 # composer.json / lock 比 vendor 新时才 composer install
 docker compose run --rm app php bin/hyperf.php migrate --force
@@ -313,7 +336,7 @@ bash deploy/update.sh --skip-pull
 
 ```bash
 ssh -T git@github.com
-cd /opt/hyperfstu && git pull
+cd /opt/hyperfstu && git checkout main && git pull --ff-only origin main
 ```
 
 公开仓库则检查 `$RepoUrl` 是否写成了 SSH 地址。

@@ -11,14 +11,30 @@
 
 ---
 
-## 0. 先建一个分支，方便回滚
+## 0. 不建分支，全程在 main 上做
+
+本项目**只用 main 一个分支**。不要 `git checkout -b`，所有练习都直接提交到 main，靠 commit 粒度回滚：
 
 ```powershell
-cd D:\code\hyperfstu\MineAdmin
-git checkout -b learn/notice
+cd D:\code\hyperfstu
+
+# 看自己改了什么
+git status
+git diff
+
+# 想留个还原点（还没写完、暂时不想提交）
+git stash push -m "wip: notice 模块"
+git stash list
+git stash pop
+
+# 写坏了，丢弃某个文件的改动
+git checkout -- MineAdmin/app/Http/Admin/Controller/NoticeController.php
+
+# 已经提交了，整体回退到上一个 commit（保留改动在工作区）
+git reset --soft HEAD~1
 ```
 
-以后每一步都可以 `git diff` 看自己改了什么。
+为什么不上分支：服务器和本地脚本都写死了 `main`（`deploy/*.sh` 会校验当前分支），一旦切到别的分支，`publish.ps1` 会直接中止，`git pull` 也拉不到东西，排查成本比「分支回滚」高得多。
 
 ---
 

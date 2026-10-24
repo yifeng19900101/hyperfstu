@@ -2,6 +2,8 @@
 
 本地读代码、改代码 → push 到 GitHub → 服务器 pull → 自动装依赖 / 迁移 / 构建前端 → 热更新看效果。
 
+> **分支策略：全程只用 `main`。** 不分 dev/prod，不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` / `native/update.sh` 都会校验当前分支，不在 `main` 直接中止。
+
 ## 快速开始
 
 ```powershell
@@ -13,6 +15,7 @@ git push -u origin main
 # 2. 配置服务器（GitHub 地址、SSH、项目目录）
 Copy-Item scripts\deploy.config.example.ps1 scripts\deploy.config.ps1
 notepad scripts\deploy.config.ps1
+#   分支不用配：全程只用 main（脚本里写死，publish/update 都会校验）
 
 # 3. 一键部署（首次：clone + 安装依赖 + 初始化数据库 + 构建前端）
 powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1

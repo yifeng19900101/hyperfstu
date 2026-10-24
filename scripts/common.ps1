@@ -20,7 +20,11 @@ if ($RemotePath -notmatch '^/(opt|srv|var/www|home|root)/[A-Za-z0-9._/-]+$') {
 }
 $RemotePath = $RemotePath.TrimEnd('/')
 if (-not $AppContainer) { $AppContainer = 'mineadmin-app' }
-if (-not $Branch) { $Branch = 'main' }
+
+# 分支策略：全程只用 main，不允许切分支。
+# 这里写死而不是放进 deploy.config.ps1，避免本地/服务器用不同分支导致「推了但没生效」。
+$Branch = 'main'
+
 # 原生部署用的 PHP（宝塔安装的版本）；docker 模式下不会用到
 if (-not $PhpBin) { $PhpBin = '/www/server/php/83/bin/php' }
 
@@ -234,4 +238,23 @@ function Get-PublicUrl {
 
 function Test-UseDockerNginx {
     return ((Get-DeployEnvValue 'USE_DOCKER_NGINX' '1') -eq '1')
+}
+
+# 只允许在 main 上工作：发现切了分支就中止，避免提交/推送跑到别的分支上
+function Assert-OnMainBranch {
+    param([string]$RepoPath = $script:ProjectRoot)
+    $current = (& git -C $RepoPath rev-parse --abbrev-ref HEAD 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or -not $current) {
+        throw "无法确定 $RepoPath 的当前分支（是不是还没 git init / 不是仓库？）"
+    }
+    if ($current -ne 'main') {
+        throw @"
+当前分支是「$current」，本项目只用 main。
+先回到 main 再执行：
+  git -C "$RepoPath" checkout main
+如果是刚才误建的分支，删掉它（上面的修改会跟着过来）：
+  git -C "$RepoPath" branch -D $current
+"@
+    }
+    return $current
 }

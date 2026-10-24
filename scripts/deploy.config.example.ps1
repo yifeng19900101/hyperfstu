@@ -1,4 +1,4 @@
-# 复制本文件为 deploy.config.ps1，然后按你的服务器情况修改。
+﻿# 复制本文件为 deploy.config.ps1，然后按你的服务器情况修改。
 # deploy.config.ps1 不要提交到公开仓库（里面有服务器地址）。
 
 # 服务器公网 IP 或域名
@@ -22,8 +22,7 @@ $IdentityFile = ''
 # 私有仓库：git@github.com:你的用户名/hyperfstu.git（需要给服务器配 Deploy Key，见 docs/08）
 $RepoUrl = 'https://github.com/your-name/hyperfstu.git'
 
-# 分支名
-$Branch = 'main'
+# 分支：固定 main，不提供配置项（全程只用一个分支，脚本里写死）
 
 # 容器名（一般不用改）
 $AppContainer = 'mineadmin-app'
