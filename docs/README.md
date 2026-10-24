@@ -33,6 +33,7 @@ D:\code\hyperfstu
 | 8 | [08-GitHub部署与前端发布](08-GitHub部署与前端发布.md) | GitHub 单仓库 + 服务器拉取 + Nginx 前端 |
 | 9 | [09-Nginx反向代理与请求头](09-Nginx反向代理与请求头.md) | 代理配置、header 传递、后端取参、真实 IP |
 | 10 | [10-宝塔面板部署](10-宝塔面板部署.md) | 服务器用宝塔时：面板 Nginx 做入口、docker 只跑应用 |
+| 11 | [11-不用Docker启动](11-不用Docker启动.md) | 完全不用 docker：宝塔 PHP + Swoole 直接常驻 |
 
 ## 三条命令先记住
 

@@ -410,6 +410,10 @@ docker builder prune -f
 | `deploy/nginx/default.conf` | 静态站、`/prod` 反代、`/uploads` 直读、`/__echo` 回显 |
 | `deploy/bt/nginx-site.conf` | **宝塔**站点配置片段（粘到面板站点里） |
 | `deploy/update.sh` | 服务器端更新总入口（按 `USE_DOCKER_NGINX` 决定是否启动 docker nginx） |
+| `deploy/native/install.sh` | 原生安装：composer + migrate + seed + 前端 |
+| `deploy/native/update.sh` | 原生日常更新（git pull → 依赖 → 迁移 → 前端 → 重启） |
+| `deploy/native/manage.sh` | 原生进程管理：start / stop / restart / reload / logs / watch |
+| `scripts/bootstrap-native.ps1` | 原生一键部署（写 .env + 远程 install） |
 | `scripts/bootstrap.ps1` | 首次 clone + 生成 .env + 初始化（宝塔加 `-BtPanel`） |
 | `scripts/publish.ps1` | 本地提交推送 + 触发服务器更新 |
 | `scripts/sync.ps1` | 不提交的快速草稿同步 |

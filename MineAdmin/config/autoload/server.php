@@ -22,7 +22,8 @@ return [
         [
             'name' => 'http',
             'type' => Server::SERVER_HTTP,
-            'host' => '0.0.0.0',
+            // docker 里保持 0.0.0.0；原生部署设为 127.0.0.1，只让 Nginx 访问
+            'host' => env('SERVER_HOST', '0.0.0.0'),
             'port' => 9501,
             'sock_type' => \SWOOLE_SOCK_TCP,
             'callbacks' => [

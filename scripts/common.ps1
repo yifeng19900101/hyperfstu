@@ -21,6 +21,8 @@ if ($RemotePath -notmatch '^/(opt|srv|var/www|home|root)/[A-Za-z0-9._/-]+$') {
 $RemotePath = $RemotePath.TrimEnd('/')
 if (-not $AppContainer) { $AppContainer = 'mineadmin-app' }
 if (-not $Branch) { $Branch = 'main' }
+# 原生部署用的 PHP（宝塔安装的版本）；docker 模式下不会用到
+if (-not $PhpBin) { $PhpBin = '/www/server/php/83/bin/php' }
 
 # 单仓库结构：服务器上 MineAdmin / MineAdmin-Vue / deploy 都在 $RemotePath 下
 $script:RemoteAppRoot = "$RemotePath/MineAdmin"

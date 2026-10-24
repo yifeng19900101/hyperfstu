@@ -1,4 +1,4 @@
-﻿# 复制本文件为 deploy.config.ps1，然后按你的服务器情况修改。
+# 复制本文件为 deploy.config.ps1，然后按你的服务器情况修改。
 # deploy.config.ps1 不要提交到公开仓库（里面有服务器地址）。
 
 # 服务器公网 IP 或域名
@@ -27,3 +27,6 @@ $Branch = 'main'
 
 # 容器名（一般不用改）
 $AppContainer = 'mineadmin-app'
+
+# 原生部署（不用 Docker）时用的 PHP 可执行文件，宝塔面板一般是这个
+$PhpBin = '/www/server/php/83/bin/php'

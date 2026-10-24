@@ -31,6 +31,12 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 
 **服务器用的是宝塔面板？** 看 [docs/10-宝塔面板部署.md](docs/10-宝塔面板部署.md)，差别是 `USE_DOCKER_NGINX=0`，由面板 Nginx 做入口。
 
+**完全不想用 Docker？** 看 [docs/11-不用Docker启动.md](docs/11-不用Docker启动.md)：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap-native.ps1 -DbUser mineadmin -DbPassword '数据库密码' -Domain 你的域名
+```
+
 > 只改 PHP、想立刻看效果且不想提交时，可开 `scripts\sync.ps1 -Watch` 做草稿同步。
 
 ## 文档
@@ -45,6 +51,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 8. [GitHub 部署与前端发布](docs/08-GitHub部署与前端发布.md)
 9. [Nginx 反向代理与请求头](docs/09-Nginx反向代理与请求头.md)
 10. [宝塔面板部署](docs/10-宝塔面板部署.md)
+11. [不用 Docker 启动](docs/11-不用Docker启动.md)
 
 ## 目录
 
@@ -52,6 +59,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 - `MineAdmin/lab/swoole/`：7 个可运行的 Swoole 实验
 - `MineAdmin-Vue/`：前端源码（Vue3 + Vite，构建产物同步到 `MineAdmin/web/`，由 Nginx 托管）
 - `deploy/`：服务器 compose（app + nginx + mysql + redis）、Nginx 配置、更新脚本
+- `deploy/native/`：不用 docker 时的安装 / 更新 / 进程管理脚本（宝塔 PHP 直跑）
 - `scripts/`：初始化 / 发布 / 同步 / 日志 / 运行 lab
 - `docs/`：学习文档
 

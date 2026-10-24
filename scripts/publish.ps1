@@ -1,7 +1,9 @@
 ﻿[CmdletBinding()]
 param(
     [string]$Message = '',
-    [switch]$SkipDeploy
+    [switch]$SkipDeploy,
+    # 服务器不用 Docker（宝塔 PHP 直跑）时加这个开关
+    [switch]$Native
 )
 
 . "$PSScriptRoot\common.ps1"
@@ -46,7 +48,12 @@ if ($SkipDeploy) {
 }
 
 Write-Step '3/3 服务器拉取并发布'
-Invoke-SshStream "cd '$RemotePath' && bash deploy/update.sh"
+if ($Native) {
+    Invoke-SshStream "cd '$RemotePath' && bash deploy/native/update.sh --php-bin='$PhpBin'"
+}
+else {
+    Invoke-SshStream "cd '$RemotePath' && bash deploy/update.sh"
+}
 
 $url = Get-PublicUrl
 Write-Host ''
@@ -54,4 +61,9 @@ Write-Host '================ 发布完成 ================' -ForegroundColor Gre
 Write-Host "  前端地址 : $url/"
 Write-Host "  接口地址 : $url/prod"
 Write-Host ''
-Write-Host '  看实时日志 : powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs'
+if ($Native) {
+    Write-Host '  看日志 : powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 -Native logs'
+}
+else {
+    Write-Host '  看实时日志 : powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs'
+}
