@@ -387,7 +387,7 @@ bash /opt/hyperfstu/deploy/native/update.sh --skip-pull
 
 > ⚠️ `FRONTEND_MODE=repo` 时**不要**在服务器上手动 `pnpm build`：`dist` 会变成未提交改动，下次 `git pull --ff-only` 直接失败。真跑过就 `git checkout -- MineAdmin-Vue/dist` 还原。
 
-`.env.production` 里的 `VITE_OPEN_PROXY=true` + `VITE_PROXY_PREFIX=/prod` 决定了浏览器请求 `/prod/...`，所以 Nginx 必须有那个 `location ^~ /prod/`。
+`.env.production` 里的 `VITE_OPEN_PROXY=true` + `VITE_PROXY_PREFIX=/hyperfproapi` 决定了浏览器请求 `/hyperfproapi/...`，所以 Nginx 必须有那个 `location ^~ /hyperfproapi/`。
 
 ---
 
@@ -405,13 +405,13 @@ bash /opt/hyperfstu/deploy/native/update.sh --skip-pull
 然后把 `deploy/bt/nginx-site.conf` 的内容粘进这个站点的 `server { }` 里（网站 → 设置 → 配置文件）。核心还是：
 
 ```nginx
-location ^~ /prod/ {
-    proxy_pass http://127.0.0.1:9501/;   # 尾斜杠必须写，否则后端收到 /prod/...
+location ^~ /hyperfproapi/ {
+    proxy_pass http://127.0.0.1:9501/;   # 尾斜杠必须写，否则后端收到 /hyperfproapi/...
     proxy_set_header Host              $host;
     proxy_set_header X-Real-IP         $remote_addr;
     proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_set_header X-Forwarded-Prefix /prod;
+    proxy_set_header X-Forwarded-Prefix /hyperfproapi;
 }
 ```
 
@@ -426,7 +426,7 @@ chmod -R o+rX /opt/hyperfstu/MineAdmin-Vue/dist /opt/hyperfstu/MineAdmin/storage
 验证（服务器上不止一个站点时记得带 `Host`）：
 
 ```bash
-curl -s "http://127.0.0.1/prod/admin/proxy/debug?page=2" -H "Host: example.com"
+curl -s "http://127.0.0.1/hyperfproapi/admin/proxy/debug?page=2" -H "Host: example.com"
 # path 应该是 /admin/proxy/debug，ip.getClientIps 是真实公网 IP
 ```
 
@@ -499,13 +499,13 @@ bash deploy/native/doctor.sh --php-bin=/www/server/php/83/bin/php
 bash /opt/hyperfstu/deploy/native/manage.sh status
 ss -lntp | grep 9501
 
-# ② 后端能直连吗（无 /prod 前缀）
+# ② 后端能直连吗（无 /hyperfproapi 前缀）
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
   -d '{}' http://127.0.0.1:9501/admin/passport/login      # 422 正常
 
 # ③ 经过 Nginx 呢
 curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/json' \
-  -d '{}' -H 'Host: example.com' http://127.0.0.1/prod/admin/passport/login
+  -d '{}' -H 'Host: example.com' http://127.0.0.1/hyperfproapi/admin/passport/login
 ```
 
 ### 常见错误
@@ -542,7 +542,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/j
 - [ ] `migrate --force` 成功，`.deploy/native-installed` 已生成（seed 只跑一次）
 - [ ] `MineAdmin-Vue/dist/index.html` 存在（repo 模式下由 git 提供）
 - [ ] `manage.sh status` 显示运行中；`curl 127.0.0.1:9501` 返回 422
-- [ ] 宝塔站点：纯静态 + 根目录 `MineAdmin-Vue/dist` + `location ^~ /prod/` 带尾斜杠
+- [ ] 宝塔站点：纯静态 + 根目录 `MineAdmin-Vue/dist` + `location ^~ /hyperfproapi/` 带尾斜杠
 - [ ] 9501 只监听 `127.0.0.1`；安全组/防火墙不放行 9501
 - [ ] 用 Supervisor 托管时，`numprocs=1`、用户 `www`、命令不带 `-d`
 - [ ] 上线前删掉 `ProxyDebugController` 和 Nginx 里的 `/__echo`

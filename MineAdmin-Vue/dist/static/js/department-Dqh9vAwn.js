@@ -1,1 +1,0 @@
-import{a as e}from"./useUserStore-CgnAHAmr.js";function r(t=null){return e().get("/admin/department/list?level=1",{params:t})}function d(t){return e().post("/admin/department",t)}function i(t,n){return e().put(`/admin/department/${t}`,n)}function m(t){return e().delete("/admin/department",{data:t})}export{i,m as n,r,d as t};

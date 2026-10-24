@@ -116,7 +116,7 @@ git status --short MineAdmin-Vue/dist | Select-Object -First 5
 # 2. 确认没有被忽略
 git check-ignore -v MineAdmin-Vue/dist/index.html   # 应该没有输出
 
-# 3. 确认 API 前缀被正确烘焙（应输出 /prod 附近的内容）
+# 3. 确认 API 前缀被正确烘焙（应输出 /hyperfproapi 附近的内容）
 Select-String -Path MineAdmin-Vue\dist\static\js\*.js -Pattern 'VITE_PROXY_PREFIX' -List
 ```
 
@@ -141,7 +141,7 @@ Select-String -Path MineAdmin-Vue\dist\static\js\*.js -Pattern 'VITE_PROXY_PREFI
 里面只有一条反代需要你确认路径：
 
 ```nginx
-location ^~ /prod/ {
+location ^~ /hyperfproapi/ {
     proxy_pass http://127.0.0.1:9501/;   # 尾斜杠必须写
     ...
 }
@@ -165,7 +165,7 @@ curl -sI http://127.0.0.1/ -H "Host: example.com" | head -5      # 200 + text/ht
 curl -s  http://127.0.0.1/ -H "Host: example.com" | grep -o 'static/js/[^"]*' | head -3
 
 # 反代通不通
-curl -s "http://127.0.0.1/prod/admin/proxy/debug" -H "Host: example.com"
+curl -s "http://127.0.0.1/hyperfproapi/admin/proxy/debug" -H "Host: example.com"
 ```
 
 ---
@@ -247,7 +247,7 @@ FRONTEND_MODE=repo
 | `git pull` 报 `local changes would be overwritten by merge: MineAdmin-Vue/dist/...` | 服务器上有人/脚本跑过 build。`cd 项目 && git checkout -- MineAdmin-Vue/dist && git pull --ff-only origin main`，并把 `FRONTEND_MODE` 确认为 `repo` |
 | 首页 403 | `www` 读不到 dist。按第 4 节补 `chmod o+rX`，用 `namei -l .../dist/index.html` 逐级查 |
 | 首页 404 / 目录列表 | 网站目录没指到 `MineAdmin-Vue/dist` |
-| 页面能开但接口 404 | `/prod` 的 `proxy_pass` 少了尾斜杠，或用了 `location /prod/` 而不是 `^~` |
+| 页面能开但接口 404 | `/hyperfproapi` 的 `proxy_pass` 少了尾斜杠，或用了 `location /hyperfproapi/` 而不是 `^~` |
 | 接口打到了 `http://hyperf:9501` | 这个包是在别的环境构建的（`VITE_OPEN_PROXY` 不是 true）。本地重新 `pnpm build` 覆盖 dist |
 | 发布后仍是旧页面 | `index.html` 被缓存。检查 `curl -sI .../index.html` 的 `Cache-Control`，或清 CDN |
 | dist 里有 `.gz/.br` | 用了旧产物。`VITE_BUILD_COMPRESS =` 置空后重新 build，并把多余的删掉 |
@@ -263,7 +263,7 @@ FRONTEND_MODE=repo
 - [ ] `.gitattributes` 有 `MineAdmin-Vue/dist/** -text -diff`
 - [ ] `deploy/.env` 里 `FRONTEND_MODE=repo`
 - [ ] 宝塔站点：根目录 `.../MineAdmin-Vue/dist`、PHP 选「纯静态」、伪静态「无」
-- [ ] `location ^~ /prod/` 的 `proxy_pass` 带尾斜杠
+- [ ] `location ^~ /hyperfproapi/` 的 `proxy_pass` 带尾斜杠
 - [ ] `www` 可读 dist（`chmod -R o+rX`）
 - [ ] `curl -sI http://域名/index.html` 的 `Cache-Control` 含 `no-cache`
 - [ ] 改了前端后，`dist` 的 hash 文件名有变化（否则是没重新 build）

@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Message = '',
     [switch]$SkipDeploy,
@@ -88,7 +88,7 @@ $url = Get-PublicUrl
 Write-Host ''
 Write-Host '================ 发布完成 ================' -ForegroundColor Green
 Write-Host "  前端地址 : $url/"
-Write-Host "  接口地址 : $url/prod"
+Write-Host "  接口地址 : $url$ApiPrefix"
 Write-Host ''
 if ($Native) {
     Write-Host '  看日志 : powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 -Native logs'

@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    # 后端路径（不含 /prod 前缀）
+    # 后端路径（不含代理前缀，默认 /hyperfproapi）
     [string]$Path = '/admin/proxy/debug',
     [ValidateSet('GET', 'POST', 'PUT', 'DELETE', 'PATCH')]
     [string]$Method = 'GET',
@@ -35,9 +35,9 @@ function ConvertTo-QueryString {
 
 $baseUrl = Get-BaseUrl
 $cleanPath = '/' + $Path.TrimStart('/')
-# 前端生产环境 API 前缀是 /prod；如果已经写了就不用重复加
-if ($cleanPath -notlike '/prod/*' -and $cleanPath -ne '/prod') {
-    $cleanPath = '/prod' + $cleanPath
+# 前端生产环境 API 前缀（默认 /hyperfproapi，见 common.ps1 的 $ApiPrefix）
+if ($cleanPath -notlike "$ApiPrefix/*" -and $cleanPath -ne $ApiPrefix) {
+    $cleanPath = $ApiPrefix + $cleanPath
 }
 
 $target = $baseUrl + $cleanPath

@@ -2,7 +2,7 @@
 
 本地读代码、改代码 → push 到 GitHub → 服务器 pull → 自动装依赖 / 迁移 / 构建前端 → 热更新看效果。
 
-> **分支策略：全程只用 `main`。** 不分 dev/prod，不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` / `native/update.sh` 都会校验当前分支，不在 `main` 直接中止。
+> **分支策略：全程只用 `main`。** 不分 dev/hyperfproapi，不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` / `native/update.sh` 都会校验当前分支，不在 `main` 直接中止。
 
 ## 快速开始
 
@@ -72,7 +72,7 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap-native.ps1 -DbUser mi
 - Hyperf 3.2 / PHP >= 8.2 / Swoole >= 5
 - 路由由 `hyperf/swagger` 注解自动注册，**必须 `SWAGGER_ENABLED=true`**
 - 热更新：`ScanFileDriver`，每 2 秒扫描 `app`、`config`、`.env`
-- 前端生产 API 前缀 `/prod`，由 Nginx 去前缀反代到 Swoole
+- 前端生产 API 前缀 `/hyperfproapi`，由 Nginx 去前缀反代到 Swoole
 - 站点根目录 = `MineAdmin-Vue/dist`（提交在仓库里），`FRONTEND_MODE=repo` 时服务器不构建
 - `composer.lock` 已按 PHP 8.3 重新生成，服务器执行 `composer install`
 - Windows 本地跑不了 Swoole，运行一律在服务器上

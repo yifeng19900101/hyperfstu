@@ -58,7 +58,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 - Hyperf：`3.2.*`
 - PHP：`>= 8.2`（部署镜像用 8.3）
 - Swoole：`>= 5.0`（部署镜像自带 Swoole 6.x）
-- 前端：Vue 3 + Vite 8 + pnpm，hash 路由，生产 API 前缀 `/prod`
+- 前端：Vue 3 + Vite 8 + pnpm，hash 路由，生产 API 前缀 `/hyperfproapi`
 - 路由：由 **hyperf/swagger 的 OpenAPI 注解** 自动注册，`#[Get]/#[Post]` 就是路由
 - 热更新：`hyperf/watcher` 的 `ScanFileDriver`，每 2000ms 扫描 `app`、`config`、`.env`
 

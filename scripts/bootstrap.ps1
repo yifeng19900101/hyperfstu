@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [switch]$Force,
     [switch]$SkipFrontend,
@@ -204,7 +204,7 @@ Write-Step '6/7 健康检查'
 Start-Sleep -Seconds 5
 if ($useDockerNginx -eq '1') {
     $webCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:$webPort/" -Quiet -AllowFail).Trim()
-    $apiCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$webPort/prod/admin/passport/login" -Quiet -AllowFail).Trim()
+    $apiCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$webPort$ApiPrefix/admin/passport/login" -Quiet -AllowFail).Trim()
     Write-Host "    前端 HTTP：$webCode    登录接口 HTTP：$apiCode"
     if ($webCode -ne '200') {
         Write-Host '    前端不是 200，检查：docker compose -f deploy/docker-compose.yml logs nginx' -ForegroundColor Yellow
@@ -231,7 +231,7 @@ Write-Host ''
 Write-Host '================ 部署完成 ================' -ForegroundColor Green
 if ($useDockerNginx -eq '1') {
     Write-Host "  前端地址 : $appUrl/"
-    Write-Host "  接口地址 : $appUrl/prod/admin/passport/login"
+    Write-Host "  接口地址 : $appUrl$ApiPrefix/admin/passport/login"
 }
 else {
     Write-Host '  还需要在宝塔面板完成两步（只做一次）：'

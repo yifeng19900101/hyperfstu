@@ -171,7 +171,7 @@ if [ "$USE_DOCKER_NGINX" = "1" ]; then
 else
     echo "部署完成。docker nginx 已禁用，请在宝塔面板配置站点："
     echo "  站点根目录 : $ROOT/MineAdmin-Vue/dist"
-    echo "  反向代理   : /prod  ->  http://127.0.0.1:$APP_PORT"
+    echo "  反向代理   : /hyperfproapi  ->  http://127.0.0.1:$APP_PORT"
     echo "  详细步骤   : docs/10-宝塔面板部署.md"
 fi
 "${COMPOSE[@]}" ps

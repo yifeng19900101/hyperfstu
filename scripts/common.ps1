@@ -21,6 +21,11 @@ if ($RemotePath -notmatch '^/(opt|srv|var/www|home|root|www)/[A-Za-z0-9._/-]+$')
 $RemotePath = $RemotePath.TrimEnd('/')
 if (-not $AppContainer) { $AppContainer = 'mineadmin-app' }
 
+# 前端生产环境的 API 前缀，必须和 MineAdmin-Vue/.env.production 里的
+# VITE_PROXY_PREFIX、以及 Nginx 的 location 前缀保持一致。
+# 改这里就够，proxy.ps1 / publish.ps1 / bootstrap.ps1 都读这个值。
+$ApiPrefix = '/hyperfproapi'
+
 # 分支策略：全程只用 main，不允许切分支。
 # 这里写死而不是放进 deploy.config.ps1，避免本地/服务器用不同分支导致「推了但没生效」。
 $Branch = 'main'

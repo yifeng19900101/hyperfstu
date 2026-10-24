@@ -1,1 +1,0 @@
-import{D as e,b as r,k as t,mt as a}from"./runtime-core.esm-bundler-CD9fp9Xz.js";import{t as o}from"./workbench-fast-QoGdpxXe.js";import{t as _}from"./workbench-login-DsrDV4r9.js";var n=t({name:"dashboard:workbench",__name:"workbench",setup(c){return(s,u)=>(a(),r("div",null,[e(o),e(_)]))}}),d=n;export{d as default};

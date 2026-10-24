@@ -1,11 +1,11 @@
 # 08 GitHub 存储 + 服务器拉取部署（含前端）
 
 > 服务器装了**宝塔面板**的话，直接看 [10-宝塔面板部署](10-宝塔面板部署.md)：80 端口归面板 Nginx，`USE_DOCKER_NGINX=0`。
-> 代理层（`/prod` 转发、请求头、后端取参、真实 IP）的细节见 [09-Nginx反向代理与请求头](09-Nginx反向代理与请求头.md)。
+> 代理层（`/hyperfproapi` 转发、请求头、后端取参、真实 IP）的细节见 [09-Nginx反向代理与请求头](09-Nginx反向代理与请求头.md)。
 
 目标：本地改代码 → `git push` 到 GitHub → 服务器 `git pull` → 自动装依赖、迁移、构建前端 → 热更新生效。
 
-> 分支策略：**全程只用 `main`**，不分 dev/prod、不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` 都会校验当前分支，不在 `main` 直接中止。
+> 分支策略：**全程只用 `main`**，不分 dev/hyperfproapi、不建功能分支。本地 `publish.ps1` 和服务器 `update.sh` 都会校验当前分支，不在 `main` 直接中止。
 
 这条链路替代了 01 里的「tar 覆盖同步」，更适合长期学习和多机协作。`sync.ps1` 仍然保留，用来做不提交的快速草稿。
 
@@ -27,7 +27,7 @@ hyperfstu/
 │  └─ dist/              # 构建产物，提交进 Git；域名直接指向这里（见 docs/12）
 ├─ deploy/
 │  ├─ docker-compose.yml # app + nginx + mysql + redis
-│  ├─ nginx/default.conf # 静态站 + /prod 反代
+│  ├─ nginx/default.conf # 静态站 + /hyperfproapi 反代
 │  ├─ update.sh          # 服务器更新入口
 │  └─ .env               # 密码/端口，不进 Git
 ├─ scripts/              # Windows 侧脚本
@@ -42,10 +42,10 @@ hyperfstu/
    ├─ /            → nginx → /usr/share/nginx/html（服务器上的 MineAdmin-Vue/dist）
    ├─ /static/*    → nginx 直接返回，30 天缓存
    ├─ /uploads/*   → nginx 直接读 MineAdmin/storage/uploads
-   └─ /prod/admin/* → 去掉 /prod → app:9501（Swoole server:watch）
+   └─ /hyperfproapi/admin/* → 去掉 /hyperfproapi → app:9501（Swoole server:watch）
 ```
 
-前端 `.env.production` 里 `VITE_OPEN_PROXY=true`，所以打包后 axios 的 `baseURL` 是 `/prod`。Nginx 把 `/prod/` 前缀去掉再转发，后端不需要改任何路由。
+前端 `.env.production` 里 `VITE_OPEN_PROXY=true`，所以打包后 axios 的 `baseURL` 是 `/hyperfproapi`。Nginx 把 `/hyperfproapi/` 前缀去掉再转发，后端不需要改任何路由。
 
 ---
 
@@ -99,7 +99,7 @@ $RepoUrl    = 'https://github.com/你的用户名/hyperfstu.git'   # 公开仓�
 
 ### 2.5 分支策略：只用一个 main
 
-本工作区**不建功能分支、不分 dev/prod**，本地、GitHub、服务器三处永远是 `main`：
+本工作区**不建功能分支、不分 dev/hyperfproapi**，本地、GitHub、服务器三处永远是 `main`：
 
 | 环节 | 行为 |
 |---|---|
@@ -174,7 +174,7 @@ powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
 完成后访问：
 
 - 前端：`http://服务器IP/`
-- 接口：`http://服务器IP/prod/admin/passport/login`
+- 接口：`http://服务器IP/hyperfproapi/admin/passport/login`
 - 账号：`admin / 123456`
 
 > 第一次会拉取 hyperf、mysql、nginx、node 镜像，并安装 Composer/npm 依赖，通常 5~10 分钟。
@@ -238,7 +238,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 update
 | 构建产物 | `MineAdmin-Vue/dist/`（构建缓存） |
 | 对外目录 | `MineAdmin-Vue/dist/`（`update.sh` 会把 `dist/` 同步到这里） |
 | 路由模式 | hash（`/#/login`），Nginx 仍保留 history fallback |
-| API 前缀 | `/prod`（`.env.production` 的 `VITE_OPEN_PROXY=true`） |
+| API 前缀 | `/hyperfproapi`（`.env.production` 的 `VITE_OPEN_PROXY=true`） |
 | 静态托管 | nginx 容器挂载 `MineAdmin-Vue/dist/` |
 | 上传目录 | nginx 挂载 `MineAdmin/storage/uploads/` 到 `/srv/uploads/` |
 
@@ -277,7 +277,7 @@ pnpm dev        # http://localhost:2888
 
 ### 修改 API 地址 / 域名
 
-- 同域部署：保持 `/prod` 不变，换域名不用改前端。
+- 同域部署：保持 `/hyperfproapi` 不变，换域名不用改前端。
 - 前后端分域：改 `MineAdmin-Vue/.env.production` 的 `VITE_APP_API_BASEURL`，并把 `VITE_OPEN_PROXY` 设为 `false`，重新构建。
 - 后端 `APP_URL` 决定上传文件返回的绝对地址；换域名后要同步修改 `MineAdmin/.env`，否则历史附件 URL 仍指向旧地址。
 
@@ -432,7 +432,7 @@ docker builder prune -f
 |---|---|
 | `.gitignore` | 排除 `.env`、`vendor/`、`dist/`、`web/`、`node_modules/` |
 | `deploy/docker-compose.yml` | app + nginx + mysql + redis |
-| `deploy/nginx/default.conf` | 静态站、`/prod` 反代、`/uploads` 直读、`/__echo` 回显 |
+| `deploy/nginx/default.conf` | 静态站、`/hyperfproapi` 反代、`/uploads` 直读、`/__echo` 回显 |
 | `deploy/bt/nginx-site.conf` | **宝塔**站点配置片段（粘到面板站点里） |
 | `deploy/update.sh` | 服务器端更新总入口（按 `USE_DOCKER_NGINX` 决定是否启动 docker nginx） |
 | `deploy/native/install.sh` | 原生安装：composer + migrate + seed + 前端 |

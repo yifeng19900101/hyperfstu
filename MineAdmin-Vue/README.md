@@ -298,7 +298,7 @@ d:/other/MineAdmin-Vue/
       target: 'http://127.0.0.1:9501',
       changeOrigin: true
     },
-    '/prod': {             // 生产代理前缀
+    '/hyperfproapi': {             // 生产代理前缀
       target: 'http://hyperf:9501',
       changeOrigin: true
     }
@@ -387,7 +387,7 @@ VITE_OPEN_DEVTOOLS=false           # 是否开启开发者工具
 ### 5.2 生产环境 (`.env.production`)
 
 - API 地址指向 Docker 服务名: `http://hyperf:9501`
-- 代理前缀: `/prod`
+- 代理前缀: `/hyperfproapi`
 - 支持生成 sourcemap
 - 支持 gzip 和 brotli 双压缩
 - 支持打包后生成 zip/tar 归档

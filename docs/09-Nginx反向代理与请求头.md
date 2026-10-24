@@ -18,11 +18,11 @@
 
 ```
 浏览器
-  │  GET /prod/admin/proxy/debug?page=2     Host: 1.2.3.4
+  │  GET /hyperfproapi/admin/proxy/debug?page=2     Host: 1.2.3.4
   ▼
 nginx:80
-  │  location /prod/  →  proxy_pass http://app:9501/
-  │  剥掉 /prod，补 6 个 X-Forwarded-* 头
+  │  location /hyperfproapi/  →  proxy_pass http://app:9501/
+  │  剥掉 /hyperfproapi，补 6 个 X-Forwarded-* 头
   ▼
 app:9501  (Swoole / Hyperf)
      $request->getUri()->getPath()      = /admin/proxy/debug
@@ -34,7 +34,7 @@ app:9501  (Swoole / Hyperf)
 两个必须记住的事实：
 
 1. **后端看到的 `remote_addr` 永远是 Nginx 的地址**，不是用户的。真实 IP 只能从 header 里取。
-2. **`/prod` 是 Nginx 剥掉的，后端根本没有这个前缀**。所以后端路由仍然是 `/admin/...`。
+2. **`/hyperfproapi` 是 Nginx 剥掉的，后端根本没有这个前缀**。所以后端路由仍然是 `/admin/...`。
 
 ---
 
@@ -47,10 +47,10 @@ app:9501  (Swoole / Hyperf)
 curl.exe -i "http://你的服务器IP/__echo?x=1" -H "X-Custom: hello"
 
 # ② 经过完整代理链：看后端到底收到了什么（GET + query + header）
-curl.exe -s "http://你的服务器IP/prod/admin/proxy/debug?page=2&name=test" -H "X-Custom: hello"
+curl.exe -s "http://你的服务器IP/hyperfproapi/admin/proxy/debug?page=2&name=test" -H "X-Custom: hello"
 
 # ③ JSON body
-curl.exe -s -X POST "http://你的服务器IP/prod/admin/proxy/debug" ^
+curl.exe -s -X POST "http://你的服务器IP/hyperfproapi/admin/proxy/debug" ^
   -H "Content-Type: application/json" ^
   -d "{\"username\":\"admin\",\"password\":\"123456\"}"
 ```
@@ -90,7 +90,7 @@ x_forwarded_for=
 
 `x_real_ip` / `x_forwarded_for` 在这里是空的，因为这两个头是 **nginx 往后端转发时才加的**，`location = /__echo` 不经过 `proxy_pass`。这也正好说明：客户端自己不带这两个头，值完全由 nginx 决定。
 
-`/prod/admin/proxy/debug` 的关键字段：
+`/hyperfproapi/admin/proxy/debug` 的关键字段：
 
 ```json
 {
@@ -108,14 +108,14 @@ x_forwarded_for=
       "host": ["203.0.113.10"],
       "x-forwarded-proto": ["http"],
       "x-forwarded-port": ["80"],
-      "x-forwarded-prefix": ["/prod"],
-      "x-original-uri": ["/prod/admin/proxy/debug?page=2&name=test"]
+      "x-forwarded-prefix": ["/hyperfproapi"],
+      "x-original-uri": ["/hyperfproapi/admin/proxy/debug?page=2&name=test"]
     }
   }
 }
 ```
 
-对比 `path`（`/admin/...`）和 `x-original-uri`（`/prod/admin/...`），就能直观看到前缀是在哪一层被剥掉的。
+对比 `path`（`/admin/...`）和 `x-original-uri`（`/hyperfproapi/admin/...`），就能直观看到前缀是在哪一层被剥掉的。
 
 ---
 
@@ -124,19 +124,19 @@ x_forwarded_for=
 ### 3.1 `proxy_pass` 的尾斜杠（最容易错的一处）
 
 ```nginx
-location /prod/ {
+location /hyperfproapi/ {
     proxy_pass http://app:9501/;   # 注意结尾的 /
 }
 ```
 
 | 写法 | 浏览器请求 | 后端收到 |
 |---|---|---|
-| `proxy_pass http://app:9501/;` | `/prod/admin/x` | `/admin/x` |
-| `proxy_pass http://app:9501;` | `/prod/admin/x` | `/prod/admin/x` |
+| `proxy_pass http://app:9501/;` | `/hyperfproapi/admin/x` | `/admin/x` |
+| `proxy_pass http://app:9501;` | `/hyperfproapi/admin/x` | `/hyperfproapi/admin/x` |
 
 规则：`proxy_pass` 里**带了 URI（哪怕只是一个 `/`）**，就用它替换掉 `location` 匹配的那一段；**没带 URI**，就原样透传。
 
-MineAdmin 前端 `.env.production` 里 `VITE_OPEN_PROXY=true`，axios 的 baseURL 是 `/prod`，后端又没有 `/prod` 前缀，所以这里必须带斜杠。
+MineAdmin 前端 `.env.production` 里 `VITE_OPEN_PROXY=true`，axios 的 baseURL 是 `/hyperfproapi`，后端又没有 `/hyperfproapi` 前缀，所以这里必须带斜杠。
 
 ### 3.2 转发头，逐个说明
 
@@ -147,7 +147,7 @@ proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
 proxy_set_header X-Forwarded-Proto $scheme;
 proxy_set_header X-Forwarded-Host  $host;
 proxy_set_header X-Forwarded-Port  $server_port;
-proxy_set_header X-Forwarded-Prefix /prod;
+proxy_set_header X-Forwarded-Prefix /hyperfproapi;
 proxy_set_header X-Original-URI    $request_uri;
 proxy_set_header X-Request-Id      $request_id;
 ```
@@ -160,7 +160,7 @@ proxy_set_header X-Request-Id      $request_id;
 | `X-Forwarded-Proto` | `$scheme` | `http` / `https`。后端判断是否安全连接、拼链接用 |
 | `X-Forwarded-Host` | `$host` | 原始 Host，多域名时用 |
 | `X-Forwarded-Port` | `$server_port` | 原始端口 |
-| `X-Forwarded-Prefix` | 固定 `/prod` | 告诉后端「我被挂在了哪个子路径下」 |
+| `X-Forwarded-Prefix` | 固定 `/hyperfproapi` | 告诉后端「我被挂在了哪个子路径下」 |
 | `X-Original-URI` | `$request_uri` | 原始请求行（含 query），排障用 |
 | `X-Request-Id` | `$request_id` | nginx 生成的唯一 ID，用于串日志 |
 
@@ -257,10 +257,10 @@ docker compose -f deploy/docker-compose.yml exec nginx nginx -s reload
 
 ## 4. Nginx 变量速查
 
-| 变量 | `/prod/admin/x?a=1` 时的值 | 说明 |
+| 变量 | `/hyperfproapi/admin/x?a=1` 时的值 | 说明 |
 |---|---|---|
-| `$uri` | `/prod/admin/x` | 规范化后的路径，不含 query，可能被 `rewrite` 改过 |
-| `$request_uri` | `/prod/admin/x?a=1` | **原始**请求行，含 query，不被改写 |
+| `$uri` | `/hyperfproapi/admin/x` | 规范化后的路径，不含 query，可能被 `rewrite` 改过 |
+| `$request_uri` | `/hyperfproapi/admin/x?a=1` | **原始**请求行，含 query，不被改写 |
 | `$args` | `a=1` | query string |
 | `$is_args` | `?` | 有 query 时是 `?`，否则空 |
 | `$host` | 域名或 IP | 优先取请求行，其次 Host 头 |
@@ -394,7 +394,7 @@ private function register(): void
 ## 6. 上传文件经过代理
 
 ```bash
-curl.exe -s -X POST "http://你的服务器IP/prod/admin/proxy/debug" \
+curl.exe -s -X POST "http://你的服务器IP/hyperfproapi/admin/proxy/debug" \
   -F "file=@D:\tmp\a.txt" \
   -F "name=test"
 ```
@@ -427,7 +427,7 @@ curl.exe -s -X POST "http://你的服务器IP/prod/admin/proxy/debug" \
 
 | 现象 | 原因 | 处理 |
 |---|---|---|
-| 所有 `/prod/admin/*` 404 | `proxy_pass` 少写尾斜杠，后端收到带 `/prod` 的路径 | 改成 `proxy_pass http://app:9501/;` |
+| 所有 `/hyperfproapi/admin/*` 404 | `proxy_pass` 少写尾斜杠，后端收到带 `/hyperfproapi` 的路径 | 改成 `proxy_pass http://app:9501/;` |
 | 静态资源 404，页面白屏 | `root` 指向错误 / `MineAdmin-Vue/dist` 为空 | `ls MineAdmin-Vue/dist/index.html`，重跑 `update.sh` |
 | 登录日志 IP 全是 `172.x` | 没登记受信任代理 | 加 `TrustedProxyMiddleware`（见 5.4） |
 | 客户端能伪造 IP | 用了 `$http_x_forwarded_for` 透传 | 换成 `$proxy_add_x_forwarded_for` |
@@ -444,7 +444,7 @@ curl.exe -s -X POST "http://你的服务器IP/prod/admin/proxy/debug" \
 
 1. 证书放在 Nginx，后端继续跑 HTTP，`X-Forwarded-Proto` 会变成 `https`。
 2. `MineAdmin/.env` 的 `APP_URL` 要改成 `https://域名`，否则上传附件返回的绝对地址仍是 `http://`，浏览器会报混合内容。
-3. 前端同域部署不用改 `VITE_APP_API_BASEURL`，`/prod` 相对路径天然跟随协议。
+3. 前端同域部署不用改 `VITE_APP_API_BASEURL`，`/hyperfproapi` 相对路径天然跟随协议。
 4. 加了 HSTS 之后再用 HTTP 访问会被强制跳转，调试时注意清理浏览器缓存。
 
 ---
