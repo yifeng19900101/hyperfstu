@@ -35,6 +35,9 @@ services:
       - "127.0.0.1:${APP_PORT:-9501}:9501"
     environment:
       TZ: Asia/Shanghai
+    extra_hosts:
+      # 方便容器访问宿主机上的服务（宝塔自带的 MySQL / Redis）
+      - "host.docker.internal:host-gateway"
     depends_on:
       mysql:
         condition: service_healthy

@@ -116,11 +116,23 @@ else
 fi
 
 log "启动 / 更新容器"
-"${COMPOSE[@]}" up -d
+# 宝塔等面板已经占用 80 端口时，USE_DOCKER_NGINX=0，只启动 app/mysql/redis，
+# 由面板的 Nginx 反向代理到 127.0.0.1:$APP_PORT。
+USE_DOCKER_NGINX="$(grep -E '^USE_DOCKER_NGINX=' deploy/.env | head -n1 | cut -d= -f2 || true)"
+USE_DOCKER_NGINX="${USE_DOCKER_NGINX:-1}"
+
+if [ "$USE_DOCKER_NGINX" = "1" ]; then
+    "${COMPOSE[@]}" up -d app nginx
+else
+    # 之前可能用 docker nginx 启动过，先清掉，避免继续占着 80 端口
+    "${COMPOSE[@]}" rm -sf nginx >/dev/null 2>&1 || true
+    "${COMPOSE[@]}" up -d app
+    echo "已禁用 docker nginx（面板模式），入口请交给宝塔站点的 Nginx"
+fi
 
 # nginx 的 default.conf 是挂载进去的，改完不会自动生效，必须校验后 reload。
 # nginx -t 失败会直接中断部署，避免带着错误配置继续跑。
-if [ "$(docker inspect -f '{{.State.Running}}' mineadmin-nginx 2>/dev/null || echo false)" = "true" ]; then
+if [ "$USE_DOCKER_NGINX" = "1" ] && [ "$(docker inspect -f '{{.State.Running}}' mineadmin-nginx 2>/dev/null || echo false)" = "true" ]; then
     log "校验并重载 nginx 配置"
     "${COMPOSE[@]}" exec -T nginx nginx -t
     "${COMPOSE[@]}" exec -T nginx nginx -s reload
@@ -128,11 +140,20 @@ fi
 
 WEB_PORT="$(grep -E '^WEB_PORT=' deploy/.env | head -n1 | cut -d= -f2 || true)"
 WEB_PORT="${WEB_PORT:-80}"
-if [ "$WEB_PORT" = "80" ]; then
-    echo
-    echo "部署完成：http://<服务器IP>/"
+APP_PORT="$(grep -E '^APP_PORT=' deploy/.env | head -n1 | cut -d= -f2 || true)"
+APP_PORT="${APP_PORT:-9501}"
+
+echo
+if [ "$USE_DOCKER_NGINX" = "1" ]; then
+    if [ "$WEB_PORT" = "80" ]; then
+        echo "部署完成：http://<服务器IP>/"
+    else
+        echo "部署完成：http://<服务器IP>:$WEB_PORT/"
+    fi
 else
-    echo
-    echo "部署完成：http://<服务器IP>:$WEB_PORT/"
+    echo "部署完成。docker nginx 已禁用，请在宝塔面板配置站点："
+    echo "  站点根目录 : $ROOT/MineAdmin/web"
+    echo "  反向代理   : /prod  ->  http://127.0.0.1:$APP_PORT"
+    echo "  详细步骤   : docs/10-宝塔面板部署.md"
 fi
 "${COMPOSE[@]}" ps

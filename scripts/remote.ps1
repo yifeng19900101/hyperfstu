@@ -12,7 +12,13 @@ switch ($Action) {
         Invoke-Ssh "$($script:ComposeCmd) ps"
     }
     'up' {
-        Invoke-Ssh "$($script:ComposeCmd) up -d"
+        if (Test-UseDockerNginx) {
+            Invoke-Ssh "$($script:ComposeCmd) up -d app nginx"
+        }
+        else {
+            Invoke-Ssh "$($script:ComposeCmd) up -d app"
+            Write-Info '宝塔模式：docker nginx 已禁用，入口由面板 Nginx 提供'
+        }
         Write-Ok "已启动：$(Get-PublicUrl)"
     }
     'down' {

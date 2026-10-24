@@ -17,6 +17,9 @@ notepad scripts\deploy.config.ps1
 # 3. 一键部署（首次：clone + 安装依赖 + 初始化数据库 + 构建前端）
 powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
 
+#   服务器装了宝塔面板（80 端口归面板 Nginx）时用这个：
+#   powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 -BtPanel
+
 # 4. 日常发布：commit + push + 服务器更新
 powershell -ExecutionPolicy Bypass -File scripts\publish.ps1 -Message "说明"
 
@@ -25,6 +28,8 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 ```
 
 详细步骤：[docs/08-GitHub部署与前端发布.md](docs/08-GitHub部署与前端发布.md)
+
+**服务器用的是宝塔面板？** 看 [docs/10-宝塔面板部署.md](docs/10-宝塔面板部署.md)，差别是 `USE_DOCKER_NGINX=0`，由面板 Nginx 做入口。
 
 > 只改 PHP、想立刻看效果且不想提交时，可开 `scripts\sync.ps1 -Watch` 做草稿同步。
 
@@ -39,6 +44,7 @@ powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs
 7. [六周学习计划](docs/07-六周学习计划.md)
 8. [GitHub 部署与前端发布](docs/08-GitHub部署与前端发布.md)
 9. [Nginx 反向代理与请求头](docs/09-Nginx反向代理与请求头.md)
+10. [宝塔面板部署](docs/10-宝塔面板部署.md)
 
 ## 目录
 

@@ -1,7 +1,10 @@
 ﻿[CmdletBinding()]
 param(
     [switch]$Force,
-    [switch]$SkipFrontend
+    [switch]$SkipFrontend,
+    # 宝塔 / 1Panel 等面板已占用 80 端口时加这个开关：
+    # 不启动 docker nginx，入口交给面板的 Nginx 反代到 127.0.0.1:9501
+    [switch]$BtPanel
 )
 
 . "$PSScriptRoot\common.ps1"
@@ -93,18 +96,34 @@ if ($composerJson -ne 'yes') {
 
 Write-Step '3/7 准备 deploy/.env'
 $deployEnvLocal = Join-Path $script:DeployDir '.env'
+
+function Set-DeployEnvValue {
+    param([string]$File, [string]$Key, [string]$Value)
+    $text = [IO.File]::ReadAllText($File, [Text.Encoding]::UTF8)
+    if ($text -match "(?m)^$([regex]::Escape($Key))=") {
+        $text = [regex]::Replace($text, "(?m)^$([regex]::Escape($Key))=.*$", "$Key=$Value")
+    }
+    else {
+        if (-not $text.EndsWith("`n")) { $text += "`n" }
+        $text += "$Key=$Value`n"
+    }
+    [IO.File]::WriteAllText($File, ($text -replace "`r`n", "`n"), (New-Object System.Text.UTF8Encoding($false)))
+}
+
 if (-not (Test-Path -LiteralPath $deployEnvLocal)) {
     # 本地没有时先尝试复用服务器上的密码，避免把已有数据库密码改掉
     $remoteEnv = Invoke-Ssh "cat '$RemotePath/deploy/.env' 2>/dev/null" -Quiet -AllowFail
     if ($remoteEnv -match '(?m)^DB_ROOT_PASSWORD=(.+)$') {
-        $envText = ($remoteEnv -split "`r?`n" | Where-Object { $_ -match '^(WEB_PORT|APP_PORT|DB_ROOT_PASSWORD|DB_DATABASE|DB_EXPOSE_PORT|REDIS_EXPOSE_PORT)=' }) -join "`n"
+        $envText = ($remoteEnv -split "`r?`n" | Where-Object { $_ -match '^(USE_DOCKER_NGINX|WEB_PORT|APP_PORT|DB_ROOT_PASSWORD|DB_DATABASE|DB_EXPOSE_PORT|REDIS_EXPOSE_PORT)=' }) -join "`n"
         if ($envText -notmatch '(?m)^WEB_PORT=') { $envText = "WEB_PORT=80`n$envText" }
+        if ($envText -notmatch '(?m)^USE_DOCKER_NGINX=') { $envText = "USE_DOCKER_NGINX=1`n$envText" }
         [IO.File]::WriteAllText($deployEnvLocal, $envText, (New-Object System.Text.UTF8Encoding($false)))
         Write-Ok '已从服务器取回 deploy/.env'
     }
     else {
         $dbPassword = New-RandomString 24
         $content = @"
+USE_DOCKER_NGINX=1
 WEB_PORT=80
 APP_PORT=9501
 DB_ROOT_PASSWORD=$dbPassword
@@ -120,11 +139,18 @@ else {
     Write-Ok '沿用已有的 deploy/.env'
 }
 
+# 宝塔模式：不启动 docker nginx，80 端口留给面板
+if ($BtPanel) {
+    Set-DeployEnvValue -File $deployEnvLocal -Key 'USE_DOCKER_NGINX' -Value '0'
+    Write-Ok '宝塔模式：已设置 USE_DOCKER_NGINX=0（入口交给面板 Nginx）'
+}
+
 $dbPassword = Get-DeployEnvValue 'DB_ROOT_PASSWORD' 'root'
 $webPort = Get-DeployEnvValue 'WEB_PORT' '80'
 $appPort = Get-DeployEnvValue 'APP_PORT' '9501'
+$useDockerNginx = Get-DeployEnvValue 'USE_DOCKER_NGINX' '1'
 Send-File $deployEnvLocal "$RemotePath/deploy/.env"
-Write-Ok "已上传 deploy/.env（WEB_PORT=$webPort）"
+Write-Ok "已上传 deploy/.env（USE_DOCKER_NGINX=$useDockerNginx, WEB_PORT=$webPort, APP_PORT=$appPort）"
 
 Write-Step '4/7 写入后端 MineAdmin/.env'
 $appUrl = Get-PublicUrl
@@ -167,21 +193,50 @@ Invoke-SshStream "cd '$RemotePath' && bash deploy/update.sh $updateArgs"
 
 Write-Step '6/7 健康检查'
 Start-Sleep -Seconds 5
-$webCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:$webPort/" -Quiet -AllowFail).Trim()
-$apiCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$webPort/prod/admin/passport/login" -Quiet -AllowFail).Trim()
-Write-Host "    前端 HTTP：$webCode    登录接口 HTTP：$apiCode"
-if ($webCode -ne '200') {
-    Write-Host '    前端不是 200，检查：docker compose -f deploy/docker-compose.yml logs nginx' -ForegroundColor Yellow
+if ($useDockerNginx -eq '1') {
+    $webCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:$webPort/" -Quiet -AllowFail).Trim()
+    $apiCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$webPort/prod/admin/passport/login" -Quiet -AllowFail).Trim()
+    Write-Host "    前端 HTTP：$webCode    登录接口 HTTP：$apiCode"
+    if ($webCode -ne '200') {
+        Write-Host '    前端不是 200，检查：docker compose -f deploy/docker-compose.yml logs nginx' -ForegroundColor Yellow
+    }
+    if ($apiCode -eq '502' -or $apiCode -eq '503') {
+        Write-Host '    后端 502/503，检查：powershell -File scripts\remote.ps1 logs' -ForegroundColor Yellow
+    }
 }
-if ($apiCode -eq '502' -or $apiCode -eq '503') {
-    Write-Host '    后端 502/503，检查：powershell -File scripts\remote.ps1 logs' -ForegroundColor Yellow
+else {
+    # 宝塔模式：容器已启动，但站点还没在面板里配置，先只验证后端直连
+    $appCode = (Invoke-Ssh "curl -s -o /dev/null -w '%{http_code}' --max-time 10 -X POST -H 'Content-Type: application/json' -d '{}' http://127.0.0.1:$appPort/admin/passport/login" -Quiet -AllowFail).Trim()
+    $webBuilt = (Invoke-Ssh "test -f '$RemotePath/MineAdmin/web/index.html' && echo yes || echo no" -Quiet -AllowFail).Trim()
+    Write-Host "    后端直连 HTTP：$appCode    MineAdmin/web/index.html：$webBuilt"
+    if ($appCode -eq '000' -or $appCode -eq '502') {
+        Write-Host '    后端没起来，检查：powershell -File scripts\remote.ps1 logs' -ForegroundColor Yellow
+    }
+    if ($webBuilt -ne 'yes') {
+        Write-Host '    前端产物缺失，检查 update.sh 的前端构建步骤' -ForegroundColor Yellow
+    }
 }
 
 Write-Step '7/7 完成'
 Write-Host ''
 Write-Host '================ 部署完成 ================' -ForegroundColor Green
-Write-Host "  前端地址 : $appUrl/"
-Write-Host "  接口地址 : $appUrl/prod/admin/passport/login"
+if ($useDockerNginx -eq '1') {
+    Write-Host "  前端地址 : $appUrl/"
+    Write-Host "  接口地址 : $appUrl/prod/admin/passport/login"
+}
+else {
+    Write-Host '  还需要在宝塔面板完成两步（只做一次）：'
+    Write-Host '    1) 网站 → 添加站点（域名/临时域名都行）→ PHP 版本选「纯静态」'
+    Write-Host "    2) 网站目录改成：$RemotePath/MineAdmin/web"
+    Write-Host '    3) 设置 → 配置文件，把 deploy/bt/nginx-site.conf 里的内容粘进 server { }'
+    Write-Host '    4) Nginx 需要能读产物：'
+    Write-Host "         chmod o+x $RemotePath $RemotePath/MineAdmin"
+    Write-Host "         chmod -R o+rX $RemotePath/MineAdmin/web $RemotePath/MineAdmin/storage/uploads"
+    Write-Host ''
+    Write-Host "  配好后的访问地址 : http://<你的域名>/"
+    Write-Host "  后端直连（调试） : http://127.0.0.1:$appPort （只能在服务器上访问）"
+    Write-Host '  完整步骤文档     : docs/10-宝塔面板部署.md'
+}
 Write-Host "  默认账号 : admin / 123456"
 Write-Host ''
 Write-Host '  看实时日志 : powershell -ExecutionPolicy Bypass -File scripts\remote.ps1 logs'

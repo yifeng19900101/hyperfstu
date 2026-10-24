@@ -1,8 +1,11 @@
 # 08 GitHub 存储 + 服务器拉取部署（含前端）
 
+> 服务器装了**宝塔面板**的话，直接看 [10-宝塔面板部署](10-宝塔面板部署.md)：80 端口归面板 Nginx，`USE_DOCKER_NGINX=0`。
 > 代理层（`/prod` 转发、请求头、后端取参、真实 IP）的细节见 [09-Nginx反向代理与请求头](09-Nginx反向代理与请求头.md)。
 
 目标：本地改代码 → `git push` 到 GitHub → 服务器 `git pull` → 自动装依赖、迁移、构建前端 → 热更新生效。
+
+sudo -u www git clone https://github.com/yifeng19900101/hyperfstu.git
 
 这条链路替代了 01 里的「tar 覆盖同步」，更适合长期学习和多机协作。`sync.ps1` 仍然保留，用来做不提交的快速草稿。
 
@@ -405,8 +408,9 @@ docker builder prune -f
 | `.gitignore` | 排除 `.env`、`vendor/`、`dist/`、`web/`、`node_modules/` |
 | `deploy/docker-compose.yml` | app + nginx + mysql + redis |
 | `deploy/nginx/default.conf` | 静态站、`/prod` 反代、`/uploads` 直读、`/__echo` 回显 |
-| `deploy/update.sh` | 服务器端更新总入口 |
-| `scripts/bootstrap.ps1` | 首次 clone + 生成 .env + 初始化 |
+| `deploy/bt/nginx-site.conf` | **宝塔**站点配置片段（粘到面板站点里） |
+| `deploy/update.sh` | 服务器端更新总入口（按 `USE_DOCKER_NGINX` 决定是否启动 docker nginx） |
+| `scripts/bootstrap.ps1` | 首次 clone + 生成 .env + 初始化（宝塔加 `-BtPanel`） |
 | `scripts/publish.ps1` | 本地提交推送 + 触发服务器更新 |
 | `scripts/sync.ps1` | 不提交的快速草稿同步 |
 | `scripts/proxy.ps1` | 发一个请求并打印响应头/响应体，验证代理链路 |

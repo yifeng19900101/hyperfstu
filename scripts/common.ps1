@@ -223,8 +223,13 @@ function Get-DeployEnvValue {
 }
 
 function Get-PublicUrl {
-    # 对外统一走 nginx：80 端口时省略端口号
-    $port = Get-DeployEnvValue 'WEB_PORT' '80'
+    # 宝塔模式下入口是面板 Nginx，默认 80；docker 模式下看 WEB_PORT
+    $useDockerNginx = Get-DeployEnvValue 'USE_DOCKER_NGINX' '1'
+    $port = if ($useDockerNginx -eq '1') { Get-DeployEnvValue 'WEB_PORT' '80' } else { '80' }
     if ($port -eq '80') { return "http://$($RemoteHost)" }
     return "http://$($RemoteHost):$port"
+}
+
+function Test-UseDockerNginx {
+    return ((Get-DeployEnvValue 'USE_DOCKER_NGINX' '1') -eq '1')
 }
