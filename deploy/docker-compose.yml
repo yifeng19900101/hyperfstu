@@ -10,7 +10,7 @@
 #
 # 说明：
 #   - app 容器以 `server:watch` 启动，文件变化后 2 秒内自动重启 Swoole，实现热更新
-#   - nginx 托管 MineAdmin-Vue/dist，并把 /prod/ 反代到 app:9501
+#   - nginx 托管 MineAdmin-Vue/dist，并把 /hyperfproapi/ 反代到 app:9501
 #   - mysql / redis 只绑定 127.0.0.1，公网无法直连（需要连库请用 SSH 隧道）
 name: mineadmin
 
